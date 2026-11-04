@@ -168,6 +168,12 @@ export interface PlanFile {
   block: Block;
   version: PlanVersion;
   exportedAt: Timestamp;
+  /**
+   * Raster map images, base64 PNG keyed by RasterLayer id. imageUri in the block is a path on the
+   * sender's phone, so the receiver writes these out and rewrites imageUri. Optional: older files and
+   * plans without raster layers omit it.
+   */
+  images?: Record<ID, string>;
 }
 
 // ---------- Log (add-only) ----------
