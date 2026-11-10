@@ -51,6 +51,9 @@ export const COLORS = {
   vector: '#00B8D4',
   ghost: '#6B6B6B',
   draft: '#E040FB',
+  pinDanger: '#D32F2F',
+  pinRequest: '#F57C00',
+  pinInfo: '#455A64',
   labelText: '#111111',
   labelHalo: '#FFFFFF',
 } as const;

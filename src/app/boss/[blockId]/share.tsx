@@ -5,12 +5,13 @@ import { showError } from '../../../ui/alerts';
 import { Button } from '../../../ui/Button';
 import { Card } from '../../../ui/Card';
 import { shareTextFile } from '../../../ui/files';
+import { pinEntriesForSharing } from '../../../core/tally';
 import { attachImages } from '../../../ui/planFileImages';
 import { Alert } from 'react-native';
 import { fmtDateTime, fmtDay, safeFileName } from '../../../ui/format';
 import { Screen } from '../../../ui/Screen';
 import { Body, EmptyState, InfoRow, Muted } from '../../../ui/Section';
-import { useBlock, useDraft, useLatestVersion } from '../../../ui/store';
+import { useBlock, useDraft, useLatestVersion, useStore } from '../../../ui/store';
 
 /** Export the latest published version as a single file and open the share sheet (AirDrop). */
 export default function ShareScreen() {
@@ -19,6 +20,7 @@ export default function ShareScreen() {
   const { data: latest } = useLatestVersion(blockId);
   const { data: draft } = useDraft(blockId);
   const [busy, setBusy] = useState(false);
+  const store = useStore();
 
   if (!block || !latest) {
     return (
@@ -31,12 +33,13 @@ export default function ShareScreen() {
   const share = async () => {
     setBusy(true);
     try {
-      const { file, missing } = await attachImages(makePlanFile(block, latest));
+      const crewPins = pinEntriesForSharing(await store.listLog(block.id), block.id);
+      const { file, missing } = await attachImages({ ...makePlanFile(block, latest), ...(crewPins.length ? { pins: crewPins } : {}) });
       if (missing.length) {
         Alert.alert('Some map images are missing', `${missing.join(', ')} won't be included. Re-import those maps in Map layers to fix this.`);
       }
       const name = `${safeFileName(block.name)}-v${latest.version}${PLAN_FILE_EXTENSION}`;
-      await shareTextFile(name, serializePlanFile(file), { mimeType: 'application/json', UTI: 'public.json', dialogTitle: `Share ${block.name} v${latest.version}` });
+      await shareTextFile(name, serializePlanFile(file), { mimeType: 'application/json', UTI: 'com.cachelog.file', dialogTitle: `Share ${block.name} v${latest.version}` });
     } catch (e) {
       showError('Could not share the plan', e);
     } finally {

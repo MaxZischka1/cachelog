@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { showError } from '../../../ui/alerts';
 import { Button } from '../../../ui/Button';
+import { usePins } from '../../../ui/pins';
 import { usePlanDraft } from '../../../ui/hooks/usePlanDraft';
 import { Segmented } from '../../../ui/Pickers';
 import { LoadListPanel, PlantersPanel } from '../../../ui/plan/PlantersPanel';
@@ -18,6 +19,7 @@ type Tab = 'map' | 'crew' | 'load';
 export default function PlanEditor() {
   const { blockId } = useLocalSearchParams<{ blockId: string }>();
   const plan = usePlanDraft(blockId);
+  const pins = usePins(blockId);
   const [tab, setTab] = useState<Tab>('map');
 
   // Open (or create) the draft as soon as the editor opens.
@@ -52,7 +54,7 @@ export default function PlanEditor() {
       {!plan.block || !content ? (
         <ActivityIndicator style={styles.flex} size="large" color={colors.primary} />
       ) : tab === 'map' ? (
-        <PlanMapEditor block={plan.block} content={content} onEdit={plan.edit} footer={reviewButton} />
+        <PlanMapEditor block={plan.block} content={content} onEdit={plan.edit} footer={reviewButton} pins={pins.mapPins} />
       ) : tab === 'crew' ? (
         <Screen footer={reviewButton}>
           <PlantersPanel content={content} onEdit={plan.edit} />

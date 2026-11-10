@@ -1,4 +1,5 @@
-import type { Block, PlanFile, PlanVersion } from '../types';
+import { isValidLogEntry } from '../tally/logFile';
+import type { Block, Draft, PlanFile, PlanSuggestion, PlanVersion } from '../types';
 import { deepCopy } from './content';
 import { nowIso } from './ids';
 
@@ -258,6 +259,11 @@ export function parsePlanFile(text: string): PlanFile {
     if (version.blockId !== block.id || content.blockId !== block.id) {
       throw new Damaged("the plan doesn't match its block");
     }
+    if (raw.pins !== undefined) {
+      const pins = arr(raw.pins, 'the crew pins');
+      const blockId = block.id as string;
+      if (!pins.every((e) => isValidLogEntry(e, blockId))) throw new Damaged('a crew pin is invalid');
+    }
     if (raw.images !== undefined) {
       const images = obj(raw.images, 'the map images');
       for (const [id, data] of Object.entries(images)) {
@@ -284,4 +290,71 @@ export function decideImport(incoming: PlanFile, latestLocal: PlanVersion | null
   if (incoming.version.version < latestLocal.version) return { action: 'skip', reason: 'older' };
   if (incoming.version.version === latestLocal.version) return { action: 'skip', reason: 'same' };
   return { action: 'import' };
+}
+
+// ---------- Suggestions (a proposed plan change sent to whoever publishes) ----------
+
+export const SUGGESTION_FILE_EXTENSION = '.suggestion.cachelog';
+
+export function makeSuggestion(block: Block, draft: Draft, author: string, message?: string): PlanSuggestion {
+  if (draft.blockId !== block.id) throw new Error('This draft belongs to a different block.');
+  const s: PlanSuggestion = {
+    format: 'cachelog-suggestion',
+    formatVersion: 1,
+    blockId: block.id,
+    blockName: block.name,
+    baseVersion: draft.baseVersion,
+    author,
+    createdAt: nowIso(),
+    content: deepCopy(draft.content),
+  };
+  if (message && message.trim()) s.message = message.trim();
+  return s;
+}
+
+export function serializeSuggestion(s: PlanSuggestion): string {
+  return JSON.stringify(s);
+}
+
+export function parseSuggestion(text: string): PlanSuggestion {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text.replace(/^\uFEFF/, ''));
+  } catch {
+    throw new PlanFileError("This suggestion file couldn't be read. Ask for it to be sent again.");
+  }
+  if (!isObj(raw) || raw.format !== 'cachelog-suggestion') throw new PlanFileError("This file isn't a Cachelog plan suggestion.");
+  if (typeof raw.formatVersion === 'number' && raw.formatVersion > 1) {
+    throw new PlanFileError('This suggestion was made with a newer version of Cachelog. Update the app, then open it again.');
+  }
+  try {
+    str(raw.blockId, 'the block id', { nonEmpty: true });
+    str(raw.blockName, 'the block name');
+    str(raw.author, 'the author');
+    str(raw.message, 'the message', { optional: true });
+    str(raw.createdAt, 'the date');
+    if (raw.baseVersion !== null) num(raw.baseVersion, 'the base version', { integer: true, min: 1 });
+    validateContent(raw.content);
+    if ((raw.content as Obj).blockId !== raw.blockId) throw new Damaged("the suggestion doesn't match its block");
+  } catch (e) {
+    if (e instanceof Damaged) throw new PlanFileError(`This suggestion file is damaged (${e.message}). Ask for it to be sent again.`);
+    throw e;
+  }
+  return raw as unknown as PlanSuggestion;
+}
+
+/** Which kind of Cachelog file this is, so one Import button (or tapping an AirDropped file) can route it. */
+export type CachelogFileKind = 'plan' | 'updates' | 'suggestion' | 'unknown';
+export function sniffFile(text: string): CachelogFileKind {
+  // The format marker is the first key; avoid parsing multi-megabyte plan files twice.
+  const head = text.slice(0, 200);
+  if (/"format"\s*:\s*"cachelog-plan"/.test(head)) return 'plan';
+  if (/"format"\s*:\s*"cachelog-log"/.test(head)) return 'updates';
+  if (/"format"\s*:\s*"cachelog-suggestion"/.test(head)) return 'suggestion';
+  try {
+    const f = (JSON.parse(text) as { format?: unknown }).format;
+    return f === 'cachelog-plan' ? 'plan' : f === 'cachelog-log' ? 'updates' : f === 'cachelog-suggestion' ? 'suggestion' : 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }

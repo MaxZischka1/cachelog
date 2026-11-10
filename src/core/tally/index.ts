@@ -13,3 +13,6 @@ export { talliesCsv, payrollCsv, piecesCsv } from './csv';
 export { formatCents, formatCount } from './format';
 export { makeLogFile, serializeLogFile, parseLogFile, LogFileError, LOG_FILE_EXTENSION } from './logFile';
 export type { LogFile } from './logFile';
+export { PIN_KINDS, pinLabel, pinStates, openPins, pinEntriesForSharing, pinToHazard } from './pins';
+export type { PinState } from './pins';
+export { isValidLogEntry } from './logFile';

@@ -174,6 +174,25 @@ export interface PlanFile {
    * plans without raster layers omit it.
    */
   images?: Record<ID, string>;
+  /** Crew pins (and their resolutions) known to the sender, so the whole crew sees the same pins. */
+  pins?: LogEntry[];
+}
+
+/**
+ * A suggested plan change sent to whoever publishes the plan (a second crew boss, a foreman).
+ * Like a pull request: it never changes the published plan by itself.
+ */
+export interface PlanSuggestion {
+  format: 'cachelog-suggestion';
+  formatVersion: 1;
+  blockId: ID;
+  blockName: string;
+  /** The published version the suggestion was drafted on (null: nothing was published yet). */
+  baseVersion: number | null;
+  author: string;
+  message?: string;
+  createdAt: Timestamp;
+  content: PlanContent;
 }
 
 // ---------- Log (add-only) ----------
@@ -225,7 +244,30 @@ export interface VoidEntry extends LogBase {
   reason: string;
 }
 
-export type LogEntry = CacheDropEntry | BagUpEntry | TallyEntry | PieceStatusEntry | VoidEntry;
+/**
+ * What a crew pin is about. Pins are how anyone on the crew (planter or boss) puts something on
+ * the shared map without editing the plan: "wasps here", "this cache is nearly out", "can't plant this".
+ */
+export type PinKind = 'hazard' | 'cache-low' | 'need-trees' | 'unplantable' | 'access' | 'done' | 'question' | 'note';
+
+export interface PinEntry extends LogBase {
+  type: 'pin';
+  kind: PinKind;
+  position: LngLat;
+  note?: string;
+  /** Cache or piece the pin is about, when it was dropped from one. */
+  cacheId?: ID;
+  pieceId?: ID;
+}
+
+/** Marks a pin as dealt with. The pin stays in the log; it just stops showing as open. */
+export interface PinResolvedEntry extends LogBase {
+  type: 'pin-resolved';
+  pinId: ID;
+  note?: string;
+}
+
+export type LogEntry = CacheDropEntry | BagUpEntry | TallyEntry | PieceStatusEntry | VoidEntry | PinEntry | PinResolvedEntry;
 
 // ---------- Minimal GeoJSON ----------
 

@@ -2,15 +2,14 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { today } from '../../../core/plan';
-import { formatCents, parseLogFile, payrollCsv, piecesCsv, talliesCsv } from '../../../core/tally';
-import { Alert } from 'react-native';
-import { useBump, useStore } from '../../../ui/store';
+import { formatCents, payrollCsv, piecesCsv, talliesCsv } from '../../../core/tally';
+import { useImportFlow } from '../../../ui/hooks/useImportFlow';
 import type { PieceStatus } from '../../../core/types';
 import { choose, showError } from '../../../ui/alerts';
 import { Button } from '../../../ui/Button';
 import { Card } from '../../../ui/Card';
 import { DaySwitcher } from '../../../ui/DaySwitcher';
-import { pickFile, readTextFile, shareTextFile } from '../../../ui/files';
+import { shareTextFile } from '../../../ui/files';
 import { fmtCountsInline, fmtHa, fmtInt, safeFileName } from '../../../ui/format';
 import { useDayData, useLogWriter } from '../../../ui/hooks/useLogWriter';
 import { Screen } from '../../../ui/Screen';
@@ -25,27 +24,7 @@ export default function TalliesScreen() {
   const [day, setDay] = useState(dayParam || today());
   const { block, plan, summary, log, loading } = useDayData(blockId, day);
   const { add } = useLogWriter(blockId, day);
-  const store = useStore();
-  const bump = useBump();
-
-  const importBagUps = async () => {
-    try {
-      const picked = await pickFile();
-      if (!picked) return;
-      const file = parseLogFile(await readTextFile(picked.uri));
-      if (file.blockId !== blockId) {
-        Alert.alert('Wrong block', `This file from ${file.author} is for a different block.`);
-        return;
-      }
-      const before = (await store.listLog(blockId)).length;
-      await store.appendLog(file.entries);
-      const added = (await store.listLog(blockId)).length - before;
-      bump();
-      Alert.alert('Bag-ups imported', added > 0 ? `Added ${added} entries from ${file.author}.` : `Nothing new from ${file.author}; already imported.`);
-    } catch (e) {
-      showError('Could not import bag-ups', e);
-    }
-  };
+  const flow = useImportFlow();
 
   if (loading) return <Screen>{null}</Screen>;
   if (!block || !plan || !summary) {
@@ -142,7 +121,7 @@ export default function TalliesScreen() {
         ))}
       </Section>
 
-      <Button title="Import planter bag-ups" size="big" variant="secondary" onPress={importBagUps} />
+      <Button title="Import crew updates" subtitle="Bag-ups, pins and piece status from a planter" size="big" variant="secondary" busy={flow.busy} onPress={flow.pick} />
       <Button title="Export CSV" size="big" variant="secondary" onPress={exportCsv} />
     </Screen>
   );

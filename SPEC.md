@@ -41,7 +41,18 @@ Legend: **[v1]** spring pilot with one crew · **[v2]** after the pilot · **[la
 - [v2] Camp sync over local Wi-Fi / Starlink (crew boss phone or a camp server)
 - [later] Mid-day plan updates over LoRa tags
 
+## 4b. Planning together (added in v0.2)
+- [v1] Crew pins: anyone drops a typed pin (hazard, cache low, need trees, can't plant, access, done, question, note) at their GPS spot or on the map
+- [v1] Pins travel planter → boss in the crew update file and boss → everyone inside the plan file
+- [v1] Pin states: open, dealt with, reopened, deleted by its author; boss can add a pin to the plan as a hazard
+- [v1] Suggestions: any crew boss phone can send its draft as a suggestion; the publishing boss sees the change list and loads it into their draft
+- [v1] Entity-level three-way merge for suggestions and for drafts left behind by a quick change
+- [v1] One import for every file type; `.cachelog` files open in the app from AirDrop / Files
+- [v2] Photos on pins
+- [v2] Phone-to-phone sync at camp (no file passing)
+
 ## 5. Planter view
+- [v1] Report my piece status (not started / in progress / complete)
 - [v1] Morning brief: my piece, my cache, species, prescription, hazards, emergency info, plan version
 - [v1] Offline map with my piece highlighted and caches with counts
 - [v1] Log bag-ups (species, count, from which cache)

@@ -14,7 +14,7 @@ import {
 } from './style';
 
 export type FC = FeatureCollection<Geometry, Record<string, any>>;
-export type SelectableKind = 'cache' | 'piece' | 'hazard';
+export type SelectableKind = 'cache' | 'piece' | 'hazard' | 'pin';
 export type Selection = { type: SelectableKind; id: ID };
 
 export const emptyFC = (): FC => ({ type: 'FeatureCollection', features: [] });
@@ -141,7 +141,7 @@ export function buildDraftFeatures(points: LngLat[]): { shape: FC; vertices: FC 
   return { shape, vertices };
 }
 
-const KIND_PRIORITY: Record<SelectableKind, number> = { cache: 0, hazard: 1, piece: 2 };
+const KIND_PRIORITY: Record<SelectableKind, number> = { pin: 0, cache: 1, hazard: 2, piece: 3 };
 
 /**
  * Picks the best selection from features under a tap: caches beat hazards beat pieces
@@ -152,9 +152,34 @@ export function selectionFromFeatures(features: { properties?: Record<string, an
   for (const f of features) {
     const kind = f.properties?.kind;
     const id = f.properties?.id;
-    if ((kind === 'cache' || kind === 'hazard' || kind === 'piece') && typeof id === 'string') {
+    if ((kind === 'cache' || kind === 'hazard' || kind === 'piece' || kind === 'pin') && typeof id === 'string') {
       if (!best || KIND_PRIORITY[kind as SelectableKind] < KIND_PRIORITY[best.type]) best = { type: kind, id };
     }
   }
   return best;
+}
+
+/** A crew pin to draw: who/what in the label, colour by kind. */
+export interface MapPin {
+  id: ID;
+  position: LngLat;
+  label: string;
+  /** hazard pins are red, requests (cache low / need trees / question) amber, the rest blue-grey. */
+  tone: 'danger' | 'request' | 'info';
+  resolved?: boolean;
+}
+
+export function buildPinFeatures(pins: MapPin[] | undefined, highlightIds: ID[] = []): FC {
+  const fc = emptyFC();
+  const hl = new Set(highlightIds);
+  for (const p of pins ?? []) {
+    if (!isValidLngLat(p.position)) continue;
+    fc.features.push(
+      feature(
+        { type: 'Point', coordinates: p.position },
+        { kind: 'pin', id: p.id, label: p.label, tone: p.tone, resolved: !!p.resolved, highlight: hl.has(p.id), radius: hl.has(p.id) ? 15 : 10 },
+      ),
+    );
+  }
+  return fc;
 }

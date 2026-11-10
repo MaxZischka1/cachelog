@@ -13,7 +13,7 @@ import {
   type SymbolLayerSpecification,
 } from '@maplibre/maplibre-react-native';
 import type { Block, ID, LngLat, PieceStatus, PlanContent } from '../core/types';
-import { buildDraftFeatures, buildGhostFeatures, buildPlanFeatures, selectionFromFeatures } from './features';
+import { buildDraftFeatures, buildGhostFeatures, buildPinFeatures, buildPlanFeatures, selectionFromFeatures, type MapPin } from './features';
 import { blockBounds, ensureMinSize, padBounds, toLngLatBounds } from './geo';
 import { BASEMAP_STYLE_URL, COLORS, FALLBACK_STYLE, LABEL_FONT } from './style';
 import { useUserLocationInternal } from './useUserLocation';
@@ -33,12 +33,14 @@ export interface BlockMapProps {
   cacheLabels?: Record<ID, string>;
   mode?: MapMode;
   showUserLocation?: boolean;
-  onSelect?: (sel: { type: 'cache' | 'piece' | 'hazard'; id: ID } | null) => void;
+  onSelect?: (sel: { type: 'cache' | 'piece' | 'hazard' | 'pin'; id: ID } | null) => void;
+  /** Crew pins drawn above everything in the plan. */
+  pins?: MapPin[];
   style?: StyleProp<ViewStyle>;
 }
 
 /** Layers queried for taps in view mode. */
-const SELECTABLE_LAYERS = ['cl-cache-circle', 'cl-hazard-point', 'cl-hazard-area-fill', 'cl-piece-fill'];
+const SELECTABLE_LAYERS = ['cl-pin-circle', 'cl-cache-circle', 'cl-hazard-point', 'cl-hazard-area-fill', 'cl-piece-fill'];
 /** Half-size of the tap box in px: 44 px square, generous for gloves. */
 const TAP_RADIUS = 22;
 const CAMERA_PADDING = { top: 60, right: 40, bottom: 140, left: 40 };
@@ -68,6 +70,7 @@ export function BlockMap(props: BlockMapProps): JSX.Element {
     mode = { kind: 'view' },
     showUserLocation = true,
     onSelect,
+    pins,
     style,
   } = props;
 
@@ -88,6 +91,7 @@ export function BlockMap(props: BlockMapProps): JSX.Element {
     () => buildPlanFeatures(plan, { statuses: pieceStatuses, highlightIds: effectiveHighlights, cacheLabels }),
     [plan, pieceStatuses, effectiveHighlights, cacheLabels],
   );
+  const pinFc = useMemo(() => buildPinFeatures(pins, effectiveHighlights), [pins, effectiveHighlights]);
   const ghostFc = useMemo(() => buildGhostFeatures(ghostPlan), [ghostPlan]);
   const draftFc = useMemo(() => buildDraftFeatures(draft), [draft]);
 
@@ -329,6 +333,36 @@ export function BlockMap(props: BlockMapProps): JSX.Element {
               id="cl-cache-label"
               type="symbol"
               layout={{ ...labelLayout(14), 'text-anchor': 'top', 'text-offset': [0, 1.3], 'text-allow-overlap': true }}
+              paint={labelPaint}
+            />
+          </GeoJSONSource>
+
+          {/* Crew pins: a white diamond-ish ring so they never read as caches or plan hazards */}
+          <GeoJSONSource id="cl-pin-src" data={pinFc}>
+            <Layer
+              id="cl-pin-circle"
+              type="circle"
+              paint={{
+                'circle-radius': ['get', 'radius'],
+                'circle-color': '#FFFFFF',
+                'circle-opacity': ['case', ['==', ['get', 'resolved'], true], 0.5, 1],
+                'circle-stroke-width': 5,
+                'circle-stroke-opacity': ['case', ['==', ['get', 'resolved'], true], 0.4, 1],
+                'circle-stroke-color': [
+                  'match',
+                  ['get', 'tone'],
+                  'danger',
+                  COLORS.pinDanger,
+                  'request',
+                  COLORS.pinRequest,
+                  COLORS.pinInfo,
+                ],
+              }}
+            />
+            <Layer
+              id="cl-pin-label"
+              type="symbol"
+              layout={{ ...labelLayout(13), 'text-anchor': 'bottom', 'text-offset': [0, -1.2] }}
               paint={labelPaint}
             />
           </GeoJSONSource>

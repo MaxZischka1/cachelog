@@ -29,6 +29,8 @@ type SheetState =
   | null;
 
 export interface PlanMapEditorProps {
+  /** Open crew pins, shown for context while planning (not editable here). */
+  pins?: import('../../map').MapPin[];
   block: Block;
   content: PlanContent;
   onEdit: Edit;
@@ -40,7 +42,7 @@ export interface PlanMapEditorProps {
 }
 
 /** Full-screen map with a toolbar for adding/moving/deleting caches, pieces and hazards. */
-export function PlanMapEditor({ block, content, onEdit, footer, banner, highlightIds }: PlanMapEditorProps) {
+export function PlanMapEditor({ block, content, onEdit, footer, banner, highlightIds, pins }: PlanMapEditorProps) {
   const [tool, setTool] = useState<Tool>({ kind: 'view' });
   const [selection, setSelection] = useState<Selection>(null);
   const [sheet, setSheet] = useState<SheetState>(null);
@@ -176,8 +178,9 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
         mode={mode}
         highlightIds={highlightIds ?? (selection ? [selection.id] : undefined)}
         showUserLocation
+        pins={pins}
         onSelect={(sel) => {
-          if (tool.kind === 'view') setSelection(sel);
+          if (tool.kind === 'view') setSelection(sel && sel.type !== 'pin' ? { type: sel.type, id: sel.id } : null);
         }}
         style={styles.flex}
       />

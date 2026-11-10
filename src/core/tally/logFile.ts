@@ -14,7 +14,8 @@ export interface LogFile {
   entries: LogEntry[];
 }
 
-export const LOG_FILE_EXTENSION = '.cachelog-log';
+/** Ends in .cachelog so iOS offers to open it in the app, like plans and suggestions. */
+export const LOG_FILE_EXTENSION = '.updates.cachelog';
 
 export class LogFileError extends Error {
   constructor(message: string) {
@@ -35,10 +36,11 @@ export function makeLogFile(blockId: ID, deviceId: string, author: string, entri
   };
 }
 
-const TYPES = new Set(['cache-drop', 'bagup', 'tally', 'piece-status', 'void']);
-const DAMAGED = "This bag-up file is damaged and can't be read. Ask the planter to send it again.";
+const TYPES = new Set(['cache-drop', 'bagup', 'tally', 'piece-status', 'void', 'pin', 'pin-resolved']);
+const PIN_KINDS = new Set(['hazard', 'cache-low', 'need-trees', 'unplantable', 'access', 'done', 'question', 'note']);
+const DAMAGED = "This crew update file is damaged and can't be read. Ask for it to be sent again.";
 
-function validEntry(e: unknown, blockId: ID): e is LogEntry {
+export function isValidLogEntry(e: unknown, blockId: ID): e is LogEntry {
   if (!e || typeof e !== 'object') return false;
   const o = e as Record<string, unknown>;
   if (typeof o.id !== 'string' || !o.id) return false;
@@ -53,6 +55,14 @@ function validEntry(e: unknown, blockId: ID): e is LogEntry {
       if (!c || typeof c.species !== 'string' || typeof c.count !== 'number' || !Number.isFinite(c.count) || c.count < 0) return false;
     }
   }
+  if (o.type === 'pin') {
+    if (typeof o.kind !== 'string' || !PIN_KINDS.has(o.kind)) return false;
+    const p = o.position as unknown[];
+    if (!Array.isArray(p) || p.length !== 2 || typeof p[0] !== 'number' || typeof p[1] !== 'number') return false;
+    if (!(Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)) return false;
+    if (o.note !== undefined && typeof o.note !== 'string') return false;
+  }
+  if (o.type === 'pin-resolved' && (typeof o.pinId !== 'string' || !o.pinId)) return false;
   return true;
 }
 
@@ -70,13 +80,13 @@ export function parseLogFile(text: string): LogFile {
   }
   const o = raw as Record<string, unknown>;
   if (!o || o.format !== 'cachelog-log') {
-    throw new LogFileError("This isn't a Cachelog bag-up file. If it's a plan, import it from the planter screen.");
+    throw new LogFileError("This isn't a Cachelog crew update file.");
   }
   if (typeof o.formatVersion !== 'number' || o.formatVersion > 1) {
     throw new LogFileError('This file was made with a newer version of Cachelog. Update the app, then try again.');
   }
   if (typeof o.blockId !== 'string' || !Array.isArray(o.entries)) throw new LogFileError(DAMAGED);
   const blockId = o.blockId;
-  if (!o.entries.every((e) => validEntry(e, blockId))) throw new LogFileError(DAMAGED);
+  if (!o.entries.every((e) => isValidLogEntry(e, blockId))) throw new LogFileError(DAMAGED);
   return raw as LogFile;
 }

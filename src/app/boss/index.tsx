@@ -2,6 +2,7 @@ import { router, Stack } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '../../ui/Button';
+import { useImportFlow } from '../../ui/hooks/useImportFlow';
 import { Card } from '../../ui/Card';
 import { Screen } from '../../ui/Screen';
 import { EmptyState, Muted, Section } from '../../ui/Section';
@@ -12,6 +13,7 @@ import { colors, font, spacing } from '../../ui/theme';
 export default function BossHome() {
   const { data: blocks, loading } = useBlocks();
   const { settings, update } = useSettings();
+  const flow = useImportFlow();
 
   const open = async (id: string) => {
     await update({ activeBlockId: id });
@@ -53,6 +55,13 @@ export default function BossHome() {
         ))}
       </Section>
       <Button title="+ New block" size="big" variant="secondary" onPress={() => router.push('/boss/block-form')} />
+      <Button
+        title="Import a file"
+        subtitle="A plan from another crew boss, crew updates, or a suggestion"
+        variant="secondary"
+        busy={flow.busy}
+        onPress={flow.pick}
+      />
     </Screen>
   );
 }

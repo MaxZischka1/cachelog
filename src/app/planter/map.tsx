@@ -6,6 +6,7 @@ import type { ID } from '../../core/types';
 import { BlockMap, useUserLocation } from '../../map';
 import { fmtDistance, fmtInt } from '../../ui/format';
 import { usePlanterData } from '../../ui/hooks/usePlanter';
+import { usePins } from '../../ui/pins';
 import { Screen } from '../../ui/Screen';
 import { EmptyState } from '../../ui/Section';
 import { colors, font, radius, spacing } from '../../ui/theme';
@@ -15,6 +16,7 @@ export default function PlanterMap() {
   const d = usePlanterData();
   // BlockMap runs its own watch for the blue dot; this second one gives us numbers for the distance card.
   const loc = useUserLocation();
+  const pins = usePins(d.blockId);
 
   const highlightIds = useMemo(() => [d.piece?.id, d.cache?.id].filter((x): x is ID => !!x), [d.piece, d.cache]);
   const cacheLabels = useMemo(() => {
@@ -44,7 +46,7 @@ export default function PlanterMap() {
   return (
     <View style={styles.flex}>
       <Stack.Screen options={{ title: d.piece ? `Map · ${d.piece.name}` : 'Map' }} />
-      <BlockMap block={d.block} plan={d.plan} highlightIds={highlightIds} cacheLabels={cacheLabels} showUserLocation style={styles.flex} />
+      <BlockMap block={d.block} plan={d.plan} highlightIds={highlightIds} cacheLabels={cacheLabels} pins={pins.mapPins} showUserLocation style={styles.flex} />
       <View style={styles.card} pointerEvents="none">
         {lines.map((l, i) => (
           <Text key={i} style={styles.line}>

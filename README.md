@@ -22,21 +22,25 @@ With a Mac and Xcode, `npx expo run:ios --device` does the same build locally.
 ## Checks
 
 ```
-npm test            # 219 unit tests: plan versioning, diffs, plan/log files, tallies, storage, map helpers, import
+npm test            # 234 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import
 npm run typecheck
 npx expo export --platform ios   # confirms the app bundles
 ```
 
-## How data moves (v1)
+## How data moves
 
-- **Plan (boss → planters):** Share plan → AirDrop the `.cachelog` file → planter taps Import plan. Map images are packed inside the file. Older or identical versions are skipped.
-- **Bag-ups (planters → boss):** planter: My totals → Send my bag-ups. Boss: Tallies → Import planter bag-ups. Importing the same file twice is safe.
+Every file ends in `.cachelog`. Tap one that was AirDropped to you and it opens in the app, or use any Import button; the app works out which kind it is.
+
+- **Plan (boss → crew):** Share plan → AirDrop. Carries the block, the published version, the map images and every crew pin. Older or identical versions are skipped.
+- **Crew updates (anyone → boss):** "Send my updates" carries that phone's bag-ups, pins and piece status. Importing the same file twice is safe.
+- **Suggestion (boss/foreman → publishing boss):** Review → "Send as a suggestion instead". The receiver sees the change list and loads it into their draft; nothing is published until they review it.
+
+See `docs/GAP-REVIEW.md` for what changed in v0.2 and why.
 
 ## Not done yet / needs a real phone
 
 - Nothing has run on a device yet. Expect MapLibre, location and file-sharing issues to show up in the first test.
 - GeoPDFs: their position is read but they can't be displayed yet. Convert to GeoTIFF first (QGIS: Raster → Conversion → Translate, or `gdal_translate in.pdf out.tif`).
 - Map label font and the OpenFreeMap basemap style are unverified (the build machine couldn't reach them).
-- `.cachelog` files aren't registered as a file type yet, so planters import through the file picker rather than "Open in Cachelog".
-- Quick change while a draft is open leaves the draft stale (publishing it later asks you to discard it).
-- No camp Wi-Fi sync, contractor web dashboard, quality plots or radio-tag integration yet (see SPEC.md v2/later).
+- Opening `.cachelog` files from AirDrop is wired up (file type registered, `/open` route) but untested on a device.
+- Sharing is still file passing. No camp Wi-Fi / phone-to-phone sync, contractor web dashboard, quality plots or radio-tag integration yet (see SPEC.md v2/later).

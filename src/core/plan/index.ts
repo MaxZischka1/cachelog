@@ -18,5 +18,13 @@ export {
   decideImport,
   PlanFileError,
   PLAN_FILE_EXTENSION,
+  SUGGESTION_FILE_EXTENSION,
+  makeSuggestion,
+  serializeSuggestion,
+  parseSuggestion,
+  sniffFile,
 } from './planFile';
+export type { CachelogFileKind } from './planFile';
+export { mergePlans, rebaseDraft } from './merge';
+export type { MergeResult } from './merge';
 export type { ImportDecision } from './planFile';

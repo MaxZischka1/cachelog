@@ -1,4 +1,8 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { serializeSuggestion, SUGGESTION_FILE_EXTENSION } from '../../../core/plan';
+import { shareTextFile } from '../../../ui/files';
+import { safeFileName } from '../../../ui/format';
+import { Flag } from '../../../ui/Section';
 import React, { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { BlockMap } from '../../../map';
@@ -8,7 +12,7 @@ import { Card } from '../../../ui/Card';
 import { usePlanDraft } from '../../../ui/hooks/usePlanDraft';
 import { TextField } from '../../../ui/NumberField';
 import { Screen } from '../../../ui/Screen';
-import { EmptyState, Section } from '../../../ui/Section';
+import { EmptyState, Muted, Section } from '../../../ui/Section';
 import { colors, font, radius, spacing } from '../../../ui/theme';
 
 /** Review the draft as a plain-language diff + ghosted map, then publish a numbered version. */
@@ -43,6 +47,23 @@ export default function ReviewScreen() {
     }
   };
 
+  // For a second crew boss or foreman: send the draft to whoever publishes, instead of publishing here.
+  const doSuggest = async () => {
+    setBusy(true);
+    try {
+      const s = await plan.makeDraftSuggestion(message);
+      await shareTextFile(`${safeFileName(s.author)}-${safeFileName(s.blockName)}${SUGGESTION_FILE_EXTENSION}`, serializeSuggestion(s), {
+        mimeType: 'application/json',
+        UTI: 'com.cachelog.file',
+        dialogTitle: 'Send suggestion',
+      });
+    } catch (e) {
+      showError('Could not send the suggestion', e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const doDiscard = async () => {
     if (!(await confirm('Discard draft?', 'All unpublished changes will be lost. The published plan stays as it is.', 'Discard', true))) return;
     try {
@@ -67,6 +88,7 @@ export default function ReviewScreen() {
       footer={
         <>
           <Button title={plan.latest ? `Publish v${plan.latest.version + 1}` : 'Publish v1'} size="big" disabled={!plan.dirty} busy={busy} onPress={doPublish} />
+          <Button title="Send as a suggestion instead" subtitle="For whoever publishes this block's plan" variant="secondary" disabled={!plan.dirty || busy} onPress={doSuggest} />
           <Button title="Discard draft" variant="ghost" onPress={doDiscard} />
         </>
       }
@@ -82,6 +104,14 @@ export default function ReviewScreen() {
           style={styles.map}
         />
       </View>
+      {plan.mergeNotes.length ? (
+        <Section title="The plan changed while you were drafting">
+          <Muted>Your draft was moved onto v{plan.latest?.version}. Check these:</Muted>
+          {plan.mergeNotes.map((t, i) => (
+            <Flag key={i} text={t} />
+          ))}
+        </Section>
+      ) : null}
       <Section title={plan.latest ? `Changes since v${plan.latest.version}` : 'First version'} right={focus ? <Button title="Show all" size="small" variant="ghost" onPress={() => setFocus(null)} /> : undefined}>
         {plan.changes.length === 0 ? <EmptyState title="No changes" message="The draft matches the published plan." /> : null}
         {plan.changes.map((c, i) => (

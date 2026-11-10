@@ -16,7 +16,7 @@ describe('log file', () => {
 
   test('rejects garbage, plans and damaged entries', () => {
     expect(() => parseLogFile('nope')).toThrow(LogFileError);
-    expect(() => parseLogFile(JSON.stringify({ format: 'cachelog-plan' }))).toThrow(/isn't a Cachelog bag-up file/);
+    expect(() => parseLogFile(JSON.stringify({ format: 'cachelog-plan' }))).toThrow(/isn't a Cachelog crew update file/);
     const bad = makeLogFile('b1', 'd', 'Jess', [bag]);
     (bad.entries[0] as any).trees = [{ species: 'Sx', count: -5 }];
     expect(() => parseLogFile(serializeLogFile(bad))).toThrow(LogFileError);

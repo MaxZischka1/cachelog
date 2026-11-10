@@ -3,7 +3,7 @@
     "name": "Cachelog",
     "slug": "cachelog",
     "scheme": "cachelog",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -12,7 +12,34 @@
       "bundleIdentifier": "com.cachelog.app",
       "infoPlist": {
         "UIFileSharingEnabled": true,
-        "LSSupportsOpeningDocumentsInPlace": true
+        "LSSupportsOpeningDocumentsInPlace": false,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Cachelog file",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": [
+              "com.cachelog.file"
+            ]
+          }
+        ],
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.cachelog.file",
+            "UTTypeDescription": "Cachelog file",
+            "UTTypeConformsTo": [
+              "public.json",
+              "public.data"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "cachelog"
+              ],
+              "public.mime-type": [
+                "application/vnd.cachelog+json"
+              ]
+            }
+          }
+        ]
       }
     },
     "android": {

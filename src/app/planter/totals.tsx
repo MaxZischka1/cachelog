@@ -1,12 +1,9 @@
 import { Stack } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Alert } from 'react-native';
+import React, { useMemo } from 'react';
 import { today } from '../../core/plan';
-import { activeEntries, formatCents, LOG_FILE_EXTENSION, makeLogFile, seasonTotal, serializeLogFile } from '../../core/tally';
-import { showError } from '../../ui/alerts';
+import { activeEntries, formatCents, seasonTotal } from '../../core/tally';
 import { Button } from '../../ui/Button';
-import { shareTextFile } from '../../ui/files';
-import { safeFileName } from '../../ui/format';
+import { useSendUpdates } from '../../ui/hooks/useSendUpdates';
 import type { Block, ID, LogEntry, SpeciesCount } from '../../core/types';
 import { Card } from '../../ui/Card';
 import { earningsFor, fmtCountsInline, fmtDay, fmtInt, sumCounts } from '../../ui/format';
@@ -37,7 +34,7 @@ export default function PlanterTotals() {
   const d = usePlanterData();
   const planterId = d.planter?.id;
   const day = today();
-  const [sending, setSending] = useState(false);
+  const updates = useSendUpdates(d.blockId);
 
   // Season = every block on this phone.
   const { data } = useStoreQuery(async (s) => {
@@ -59,28 +56,6 @@ export default function PlanterTotals() {
       days: days.size,
     };
   }, [data, planterId, day]);
-
-  const sendToBoss = async () => {
-    if (!data || !d.block || !d.settings || !d.planter) return;
-    setSending(true);
-    try {
-      const mine = data.log.filter((e) => e.blockId === d.block!.id && e.deviceId === d.settings!.deviceId);
-      if (mine.length === 0) {
-        Alert.alert('Nothing to send', 'Log a bag-up first.');
-        return;
-      }
-      const file = makeLogFile(d.block.id, d.settings.deviceId, d.planter.name, mine);
-      await shareTextFile(`${safeFileName(d.planter.name)}-${safeFileName(d.block.name)}-${day}${LOG_FILE_EXTENSION}`, serializeLogFile(file), {
-        mimeType: 'application/json',
-        UTI: 'public.json',
-        dialogTitle: 'Send bag-ups to crew boss',
-      });
-    } catch (e) {
-      showError('Could not send bag-ups', e);
-    } finally {
-      setSending(false);
-    }
-  };
 
   if (!d.planter) return <Screen><EmptyState title="Pick which planter you are first" /></Screen>;
   if (!t) return <Screen>{null}</Screen>;
@@ -107,7 +82,7 @@ export default function PlanterTotals() {
           {t.seasonTallied > 0 ? <InfoRow label="Tallied (paid)" value={`${fmtInt(t.seasonTallied)} · ${formatCents(t.seasonTally.cents)}`} /> : null}
         </Card>
       </Section>
-      <Button title="Send my bag-ups to crew boss" size="big" busy={sending} onPress={sendToBoss} />
+      <Button title="Send my updates to crew boss" size="big" busy={updates.sending} onPress={updates.send} />
       <Muted>AirDrop the file to your crew boss at the end of the day. Sending it twice is fine.</Muted>
       <Muted>Estimates use the tree prices in the plan file and your bag-ups. Pay is based on the crew boss’s tallies.</Muted>
     </Screen>
