@@ -21,6 +21,32 @@
             "LSItemContentTypes": [
               "com.cachelog.file"
             ]
+          },
+          {
+            "CFBundleTypeName": "Block map",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "com.adobe.pdf",
+              "public.tiff",
+              "com.google.earth.kml"
+            ]
+          }
+        ],
+        "UTImportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.google.earth.kml",
+            "UTTypeDescription": "KML",
+            "UTTypeConformsTo": [
+              "public.xml"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "kml"
+              ],
+              "public.mime-type": [
+                "application/vnd.google-earth.kml+xml"
+              ]
+            }
           }
         ],
         "UTExportedTypeDeclarations": [

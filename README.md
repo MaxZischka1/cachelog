@@ -22,7 +22,7 @@ With a Mac and Xcode, `npx expo run:ios --device` does the same build locally.
 ## Checks
 
 ```
-npm test            # 239 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import
+npm test            # 268 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import
 npm run typecheck
 npx expo export --platform ios   # confirms the app bundles
 ```
@@ -33,6 +33,7 @@ Every file ends in `.cachelog`. Tap one that was AirDropped to you and it opens 
 
 - **Plan (boss → crew):** Share plan → AirDrop. Carries the block, the published version, the map images and every crew pin. Older or identical versions are skipped.
 - **Crew updates (anyone → boss):** "Send my updates" carries that phone's bag-ups, pins and piece status. Importing the same file twice is safe.
+- **Block map (licensee → boss):** GeoPDF, GeoTIFF, KML or GeoJSON. Use any Import button (pick several at once for a whole contract), or Share → Cachelog from Files or Mail. From a GeoPDF map sheet the app also reads the opening number, plant/opening area and each prescription (species, trees/ha, total trees, boxes, stock, seedlot, start date…) by where the labels and values sit on the page, so it isn't tied to one licensee's form. The map goes on the block with that opening number, else the block it lies over, else the empty block the import was started from, else a new block named by its opening number. It only asks when more than one block could fit. A revised copy of the same map replaces the old one. New pieces default to the sheet's density and species, and planters see them in the morning brief.
 - **Suggestion (boss/foreman → publishing boss):** Review → "Send as a suggestion instead". The receiver sees the change list and loads it into their draft; nothing is published until they review it.
 
 See `docs/GAP-REVIEW.md` for what changed in v0.2 and why.

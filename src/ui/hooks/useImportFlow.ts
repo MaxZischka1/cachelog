@@ -3,34 +3,36 @@ import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { decideImport, diffPlans, mergePlans, parsePlanFile, parseSuggestion, rebaseDraft, sniffFile, startDraft } from '../../core/plan';
 import { parseLogFile } from '../../core/tally';
-import type { Draft } from '../../core/types';
+import type { Draft, ID } from '../../core/types';
 import { isMapFileName } from '../../import';
 import { confirm, showError } from '../alerts';
-import { pickFile, readTextFile } from '../files';
+import { pickFiles, readTextFile, type PickedFile } from '../files';
 import { fmtDateTime } from '../format';
+import { describeMapBatch, describeMapImport, importMapAnywhere, type MapImportOutcome } from '../mapImport';
 import { extractImages } from '../planFileImages';
-import { useBump, useStore } from '../store';
+import { errorMessage, useBump, useStore } from '../store';
 
-const MAP_FILE_HINT = 'To add a block map, open the block, then Map layers > Import map file.';
+const NOT_CACHELOG = 'Pick a plan, crew update or suggestion sent from Cachelog, or a block map (GeoPDF, GeoTIFF, KML, GeoJSON).';
 
-/**
- * Read a picked or opened file as Cachelog text. Map files and other binary files get a plain
- * message instead of the system's "text encoding can't be determined" error.
- * Resolves null (after telling the user) when the file is a map.
- */
-async function readCachelogText(uri: string, name: string): Promise<string | null> {
-  if (isMapFileName(name)) {
-    Alert.alert('That is a map file', `This button opens plans, crew updates and suggestions sent from Cachelog. ${MAP_FILE_HINT}`);
-    return null;
-  }
+/** Read a file as Cachelog text, with a plain message instead of the system's "text encoding" error. */
+async function readCachelogText(uri: string): Promise<string> {
   try {
     return await readTextFile(uri);
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    if (/encoding/i.test(detail)) {
-      throw new Error(`This isn't a Cachelog file. Pick a plan, crew update or suggestion file sent from Cachelog. ${MAP_FILE_HINT}`);
-    }
+    if (/encoding/i.test(detail)) throw new Error(`This isn't a Cachelog file. ${NOT_CACHELOG}`);
     throw e;
+  }
+}
+
+/** File name from a picked name or a file URL. */
+function fileNameOf(nameOrUri: string): string {
+  const base = nameOrUri.split(/[?#]/)[0];
+  const last = base.slice(base.lastIndexOf('/') + 1);
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
   }
 }
 
@@ -39,9 +41,12 @@ async function readCachelogText(uri: string, name: string): Promise<string | nul
  *  - a plan (from the crew boss): saves the block, the new version and the crew's pins
  *  - crew updates (from a planter): adds their bag-ups, pins and piece statuses
  *  - a suggestion (from another boss or foreman): merges it into the draft for review
+ *  - a block map (GeoPDF, GeoTIFF, KML, GeoJSON, crew boss only): added to the block it lies on,
+ *    or the block the import started from (`blockId`) if that one is empty, or a new block
  * Shows the result and moves to the right screen.
  */
-export function useImportFlow() {
+export function useImportFlow(opts: { blockId?: ID } = {}) {
+  const currentBlockId = opts.blockId;
   const store = useStore();
   const bump = useBump();
   const [busy, setBusy] = useState(false);
@@ -145,38 +150,82 @@ export function useImportFlow() {
         return;
       }
 
-      Alert.alert('Not a Cachelog file', `Pick a plan, crew update or suggestion file sent from Cachelog. ${MAP_FILE_HINT}`);
+      Alert.alert('Not a Cachelog file', NOT_CACHELOG);
     },
     [store, bump],
   );
 
-  const run = useCallback(
-    async (getText: () => Promise<string | null>) => {
-      setBusy(true);
-      try {
-        const text = await getText();
-        if (text !== null) await handleText(text);
-      } catch (e) {
-        showError('Could not open the file', e);
-      } finally {
-        setBusy(false);
+  /** Import one or more map files, each onto its own block (see importMapAnywhere). */
+  const importMaps = useCallback(
+    async (files: PickedFile[]) => {
+      const settings = await store.getSettings();
+      if (settings?.role !== 'crew-boss') {
+        Alert.alert('Maps come from your crew boss', 'Block maps arrive with the plan file. Ask your crew boss to share the plan again.');
+        return;
+      }
+      const outcomes: MapImportOutcome[] = [];
+      const failed: { name: string; reason: string }[] = [];
+      for (const f of files) {
+        try {
+          const o = await importMapAnywhere(store, f, currentBlockId);
+          if (o) outcomes.push(o);
+        } catch (e) {
+          if (files.length === 1) throw e;
+          failed.push({ name: f.name, reason: errorMessage(e) });
+        }
+      }
+      const last = outcomes[outcomes.length - 1];
+      if (last) await store.saveSettings({ ...settings, activeBlockId: last.block.id });
+      bump();
+      if (files.length === 1) {
+        if (last) Alert.alert(last.created ? 'New block' : 'Map added', describeMapImport(last));
+      } else if (outcomes.length || failed.length) {
+        Alert.alert(`${outcomes.length} of ${files.length} maps imported`, describeMapBatch(outcomes, failed));
+      }
+      const blockIds = [...new Set(outcomes.map((o) => o.block.id))];
+      if (blockIds.length === 1 && blockIds[0] !== currentBlockId) {
+        router.dismissTo('/boss');
+        router.push(`/boss/${blockIds[0]}`);
+      } else if (blockIds.length > 1) {
+        router.dismissTo('/boss');
       }
     },
-    [handleText],
+    [store, bump, currentBlockId],
   );
 
-  /** Choose a file with the document picker. */
+  /** Map files go to the map import (together); everything else is read as a Cachelog file. */
+  const handleFiles = useCallback(
+    async (files: PickedFile[]) => {
+      const maps = files.filter((f) => isMapFileName(f.name));
+      if (maps.length) await importMaps(maps);
+      for (const f of files) if (!isMapFileName(f.name)) await handleText(await readCachelogText(f.uri));
+    },
+    [importMaps, handleText],
+  );
+
+  const run = useCallback(async (work: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await work();
+    } catch (e) {
+      showError('Could not open the file', e);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  /** Choose one or more files with the document picker (several maps can be imported at once). */
   const pick = useCallback(
     () =>
       run(async () => {
-        const picked = await pickFile();
-        return picked ? readCachelogText(picked.uri, picked.name) : null;
+        const picked = await pickFiles();
+        await handleFiles(picked.map((p) => ({ uri: p.uri, name: p.name || fileNameOf(p.uri) })));
       }),
-    [run],
+    [run, handleFiles],
   );
 
   /** Open a file the system handed to the app (AirDrop, Files, Mail). */
-  const open = useCallback((uri: string) => run(() => readCachelogText(uri, uri)), [run]);
+  const open = useCallback((uri: string) => run(() => handleFiles([{ uri, name: fileNameOf(uri) }])), [run, handleFiles]);
 
   return { busy, pick, open };
 }

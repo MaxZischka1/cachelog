@@ -57,7 +57,7 @@ export default function BossHome() {
       <Button title="+ New block" size="big" variant="secondary" onPress={() => router.push('/boss/block-form')} />
       <Button
         title="Import a file"
-        subtitle="A plan from another crew boss, crew updates, or a suggestion"
+        subtitle="A block map (PDF, GeoTIFF, KML), a plan, crew updates or a suggestion"
         variant="secondary"
         busy={flow.busy}
         onPress={flow.pick}

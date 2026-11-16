@@ -11,6 +11,7 @@ import { kmlToGeoJSON, normalizeGeoJSON } from './vector';
 import { newImportId } from './ids';
 import type { ImportResult } from './types';
 import { chooseGeoPdfPage, describeGeoPdf, extensionOf, layerName, vectorResult } from './helpers';
+import { readBlockSheet } from './pdfSheet';
 
 /** Where imported map images live: <documents>/maps. */
 function mapsDir(): Directory {
@@ -82,7 +83,15 @@ export async function importMapFile(uri: string, name: string): Promise<ImportRe
       }
       const corners = page.region?.corners ?? page.corners;
       const layer: RasterLayer = { id, kind: 'raster', name: title, imageUri: out.uri, corners };
-      return { kind: 'raster', layer, warnings };
+      // The opening number and prescription printed on the sheet. Optional: a map without a form
+      // (or text the reader can't place) still imports.
+      let sheet;
+      try {
+        sheet = readBlockSheet(await GeoPdfRender.pageWords(uri, page.pageIndex), name || title) ?? undefined;
+      } catch {
+        sheet = undefined;
+      }
+      return { kind: 'raster', layer, warnings, sheet };
     }
     case 'kmz':
       throw new Error('KMZ (zipped KML) is not supported yet. Unzip it and import the doc.kml inside, or save it as KML from Google Earth.');

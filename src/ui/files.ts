@@ -27,6 +27,13 @@ export async function pickFile(): Promise<PickedFile | null> {
   return { uri: a.uri, name: a.name };
 }
 
+/** Opens the document picker allowing several files; resolves [] when the user cancels. */
+export async function pickFiles(): Promise<PickedFile[]> {
+  const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: true });
+  if (res.canceled || !res.assets) return [];
+  return res.assets.map((a) => ({ uri: a.uri, name: a.name }));
+}
+
 export async function readTextFile(uri: string): Promise<string> {
   return new File(uri).text();
 }

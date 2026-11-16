@@ -55,6 +55,37 @@ export interface VectorLayer {
 
 export type MapLayer = RasterLayer | VectorLayer;
 
+/** One planting prescription as printed on the licensee's map sheet. Values are kept as printed. */
+export interface SheetPrescription {
+  species?: string;
+  treesPerHa?: number;
+  totalTrees?: number;
+  boxes?: number;
+  treesPerBox?: number;
+  stockType?: string;
+  seedlot?: string;
+  seedZone?: string;
+  age?: string;
+  plantType?: string;
+  access?: string;
+  /** As printed (e.g. "6/1/2026"); day/month order varies by licensee, so it is not converted. */
+  startDate?: string;
+  nursery?: string;
+  orderNumber?: string;
+  deliveryDate?: string;
+}
+
+/** What was read off a block's map sheet (GeoPDF) when it was imported. */
+export interface BlockSheet {
+  /** File it came from. */
+  source: string;
+  openingNumber?: string;
+  operatingArea?: string;
+  plantAreaHa?: number;
+  openingAreaHa?: number;
+  prescriptions: SheetPrescription[];
+}
+
 export interface Block {
   id: ID;
   name: string;
@@ -65,6 +96,8 @@ export interface Block {
   emergency: EmergencyInfo;
   layers: MapLayer[];
   createdAt: Timestamp;
+  /** Opening number, areas and prescription read from the imported map sheet, if any. */
+  sheet?: BlockSheet;
 }
 
 // ---------- Plan content ----------

@@ -42,6 +42,12 @@ describe('plan files', () => {
     expect(f.version.content).not.toBe(v.content);
     expect(Date.parse(f.exportedAt)).not.toBeNaN();
   });
+  it('carries the map sheet (opening, prescription) to the crew', () => {
+    const sheet = { source: 'BLK_5050853586.pdf', openingNumber: '5050853586', plantAreaHa: 3.29, prescriptions: [{ species: 'SW', treesPerHa: 600, stockType: 'S410A' }] };
+    const f = makePlanFile({ ...sampleBlock(), sheet }, sampleVersion(2));
+    expect(parsePlanFile(serializePlanFile(f)).block.sheet).toEqual(sheet);
+  });
+
   it('makePlanFile rejects a version from another block', () => {
     expect(() => makePlanFile({ ...sampleBlock(), id: 'other' }, sampleVersion(1))).toThrow();
   });

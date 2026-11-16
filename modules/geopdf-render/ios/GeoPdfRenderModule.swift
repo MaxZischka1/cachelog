@@ -16,7 +16,88 @@ public class GeoPdfRenderModule: Module {
     AsyncFunction("renderPage") { (sourceUri: String, pageIndex: Int, maxSide: Int, outputUri: String, region: [Double]?) throws -> [String: Int] in
       try renderPdfPage(sourceUri: sourceUri, pageIndex: pageIndex, maxSide: maxSide, outputUri: outputUri, region: region)
     }
+
+    /// The page's words with their boxes in PDF user space: [{ t, x, y, w, h }], x/y = bottom-left.
+    /// Used to read form fields (opening number, prescription) printed on the map sheet.
+    AsyncFunction("pageWords") { (sourceUri: String, pageIndex: Int) throws -> [[String: Any]] in
+      let document = try openPdf(sourceUri)
+      guard pageIndex >= 0, pageIndex < document.pageCount, let page = document.page(at: pageIndex) else {
+        throw PdfPageException(pageIndex + 1)
+      }
+      return pdfPageWords(page).map { ["t": $0.text, "x": $0.box.minX, "y": $0.box.minY, "w": $0.box.width, "h": $0.box.height] }
+    }
   }
+}
+
+private func openPdf(_ uri: String) throws -> PDFDocument {
+  guard let document = PDFDocument(url: try localFileURL(uri)) else { throw PdfOpenException() }
+  if document.isLocked { throw PdfLockedException() }
+  return document
+}
+
+struct PdfWord {
+  var text: String
+  var box: CGRect
+}
+
+/// Splits the page text into words: at whitespace, and where the next character is not next to
+/// the previous one on the same line (separate text runs often have no space between them).
+/// Each character's text and box come from the same PDFSelection; `page.string` indexes do not
+/// line up with `characterBounds(at:)` on real map sheets.
+func pdfPageWords(_ page: PDFPage) -> [PdfWord] {
+  guard let all = page.selection(for: page.bounds(for: .mediaBox)) else { return [] }
+  var words: [PdfWord] = []
+  for line in all.selectionsByLine() {
+    let count = line.numberOfTextRanges(on: page)
+    var current: PdfWord?
+    var last: (text: String, box: CGRect)?
+    func flush() {
+      if let w = current, !w.text.isEmpty { words.append(w) }
+      current = nil
+    }
+    for r in 0..<count {
+      let range = line.range(at: r, on: page)
+      guard range.location != NSNotFound else { continue }
+      for i in range.location..<(range.location + range.length) {
+        guard let sel = page.selection(for: NSRange(location: i, length: 1)),
+              let ch = sel.string, !ch.isEmpty else { continue }
+        if ch.allSatisfy({ $0.isWhitespace }) {
+          flush()
+          continue
+        }
+        let b = sel.bounds(for: page)
+        if b.isEmpty || !b.minX.isFinite {
+          flush()
+          continue
+        }
+        // PDFKit repeats the last character of a text run at the run's end: same glyph, same box.
+        if let l = last, l.text == ch, overlapRatio(b, l.box) > 0.5 { continue }
+        last = (ch, b)
+        if var w = current {
+          let h = max(w.box.height, b.height, 1)
+          let gap = b.minX - w.box.maxX
+          let sameLine = abs(b.midY - w.box.midY) < h * 0.5
+          if sameLine && gap > -h * 0.3 && gap < h * 0.35 {
+            w.text += ch
+            w.box = w.box.union(b)
+            current = w
+            continue
+          }
+          flush()
+        }
+        current = PdfWord(text: ch, box: b)
+      }
+    }
+    flush()
+  }
+  return words
+}
+
+/// Share of `a`'s area that lies inside `b`.
+func overlapRatio(_ a: CGRect, _ b: CGRect) -> CGFloat {
+  let i = a.intersection(b)
+  guard !i.isNull, a.width > 0, a.height > 0 else { return 0 }
+  return (i.width * i.height) / (a.width * a.height)
 }
 
 private func localFileURL(_ uri: String) throws -> URL {
@@ -37,11 +118,9 @@ func displayTransform(rect r: CGRect, rotation: Int) -> CGAffineTransform {
 }
 
 private func renderPdfPage(sourceUri: String, pageIndex: Int, maxSide: Int, outputUri: String, region: [Double]?) throws -> [String: Int] {
-  let source = try localFileURL(sourceUri)
   let output = try localFileURL(outputUri)
 
-  guard let document = PDFDocument(url: source) else { throw PdfOpenException() }
-  if document.isLocked { throw PdfLockedException() }
+  let document = try openPdf(sourceUri)
   guard pageIndex >= 0, pageIndex < document.pageCount,
         let page = document.page(at: pageIndex), let cgPage = page.pageRef else {
     throw PdfPageException(pageIndex + 1)

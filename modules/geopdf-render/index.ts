@@ -13,6 +13,9 @@ export interface GeoPdfRenderModule {
     outputUri: string,
     region: [number, number, number, number] | null,
   ): Promise<{ width: number; height: number }>;
+
+  /** The page's words with boxes in PDF user space (x/y = bottom-left), for reading the map sheet's form. */
+  pageWords(sourceUri: string, pageIndex: number): Promise<{ t: string; x: number; y: number; w: number; h: number }[]>;
 }
 
 /**

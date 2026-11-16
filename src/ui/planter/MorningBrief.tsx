@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { polygonAreaHa, today } from '../../core/plan';
 import type { Block, Cache, Piece, PlanVersion } from '../../core/types';
+import { pieceRxFromSheet } from '../../import/pdfSheet';
 import { Card } from '../Card';
 import { fmtCountsInline, fmtDateTime, fmtDay, fmtHa } from '../format';
 import { Body, InfoRow, Muted } from '../Section';
@@ -10,7 +11,9 @@ import { colors, font, spacing } from '../theme';
 /** Planter's morning brief: my piece, my cache, prescription, hazards, plan version. */
 export function MorningBrief({ block, version, piece, cache }: { block: Block; version: PlanVersion; piece: Piece | null; cache: Cache | null }) {
   const plan = version.content;
-  const rx = piece?.prescription;
+  // The piece's own prescription, else the one printed on the block's map sheet.
+  const rx = piece?.prescription ?? (piece ? pieceRxFromSheet(block.sheet) : undefined);
+  const stock = block.sheet?.prescriptions.find((p) => p.stockType)?.stockType;
   const oldDay = plan.day !== today();
 
   return (
@@ -29,6 +32,7 @@ export function MorningBrief({ block, version, piece, cache }: { block: Block; v
             {rx?.densityPerHa ? <InfoRow label="Density" value={`${rx.densityPerHa.toLocaleString('en-US')} /ha`} /> : null}
             {rx?.spacingM ? <InfoRow label="Spacing" value={`${rx.spacingM} m`} /> : null}
             {rx?.species?.length ? <InfoRow label="Species" value={rx.species.join(', ')} /> : null}
+            {stock ? <InfoRow label="Stock" value={stock} /> : null}
             {piece.notes ? <Body>{piece.notes}</Body> : null}
           </>
         ) : (

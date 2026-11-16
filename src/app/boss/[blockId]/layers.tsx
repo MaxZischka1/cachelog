@@ -1,20 +1,19 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { polygonAreaHa, startDraft, today, updateDraft } from '../../../core/plan';
-import type { Block, Piece } from '../../../core/types';
+import { Alert, View } from 'react-native';
+import { polygonAreaHa } from '../../../core/plan';
+import type { Block } from '../../../core/types';
 import { importMapFile, type ImportResult } from '../../../import';
 import { downloadOfflineRegion } from '../../../map';
 import { confirm, showError } from '../../../ui/alerts';
 import { Button } from '../../../ui/Button';
 import { Card } from '../../../ui/Card';
 import { pickFile } from '../../../ui/files';
+import { applyMapToBlock, offerPieces } from '../../../ui/mapImport';
 import { fmtHa } from '../../../ui/format';
-import { addPieces } from '../../../ui/planEdits';
 import { Screen } from '../../../ui/Screen';
 import { Body, EmptyState, Flag, Muted, Section } from '../../../ui/Section';
 import { useBlock, useBump, useLatestVersion, useStore } from '../../../ui/store';
-import { colors, font } from '../../../ui/theme';
 
 /** Import GeoTIFF / GeoPDF / KML / GeoJSON into the block, optionally pieces into the draft; offline basemap. */
 export default function LayersScreen() {
@@ -34,15 +33,6 @@ export default function LayersScreen() {
     bump();
   };
 
-  const addPiecesToDraft = async (pieces: Piece[]) => {
-    const existing = (await store.getDraft(blockId)) ?? startDraft(blockId, await store.getLatestVersion(blockId), today());
-    const names = new Set(existing.content.pieces.map((p) => p.name.toLowerCase()));
-    const fresh = pieces.filter((p) => !names.has(p.name.toLowerCase()));
-    await store.saveDraft(updateDraft(existing, addPieces(fresh)));
-    bump();
-    return fresh.length;
-  };
-
   const doImport = async () => {
     const picked = await pickFile().catch((e) => {
       showError('Could not open the file picker', e);
@@ -52,16 +42,9 @@ export default function LayersScreen() {
     setBusy(true);
     try {
       const result = await importMapFile(picked.uri, picked.name);
-      await saveBlock({ ...block, layers: [...block.layers, result.layer] });
-      let piecesAdded: number | undefined;
-      if (result.kind === 'vector' && result.pieces.length > 0) {
-        const yes = await confirm(
-          `${result.pieces.length} polygon${result.pieces.length === 1 ? '' : 's'} found`,
-          'Add them as pieces to the draft plan? Pieces with a name already in the draft are skipped. You can review before publishing.',
-          'Add pieces',
-        );
-        if (yes) piecesAdded = await addPiecesToDraft(result.pieces);
-      }
+      await saveBlock(applyMapToBlock(block, result).block);
+      const piecesAdded = await offerPieces(store, blockId, result);
+      bump();
       setLast({ name: picked.name, result, piecesAdded });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -135,11 +118,6 @@ export default function LayersScreen() {
         <Body>Download the basemap around this block while you still have signal.</Body>
         <Button title={progress !== null ? `Downloading… ${Math.round(progress)}%` : 'Download for offline'} variant="secondary" busy={progress !== null} onPress={doOffline} />
       </Section>
-      <Text style={styles.hint}>GeoPDF that can’t be drawn on the phone yet: convert it to GeoTIFF on a laptop and import that.</Text>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  hint: { fontSize: font.small, color: colors.textMuted },
-});

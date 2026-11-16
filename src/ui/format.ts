@@ -73,6 +73,7 @@ export function earningsFor(trees: SpeciesCount[], block: Block): number {
 
 export function speciesFromBlock(block: Block | null | undefined, plan?: PlanContent | null): string[] {
   const set = new Set<string>(Object.keys(block?.pricesCents ?? {}));
+  for (const rx of block?.sheet?.prescriptions ?? []) if (rx.species) set.add(rx.species);
   for (const c of plan?.caches ?? []) for (const t of c.trees) set.add(t.species);
   return [...set].sort();
 }

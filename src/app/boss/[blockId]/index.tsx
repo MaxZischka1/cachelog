@@ -9,6 +9,7 @@ import { useImportFlow } from '../../../ui/hooks/useImportFlow';
 import { usePlanDraft } from '../../../ui/hooks/usePlanDraft';
 import { pinText, usePins } from '../../../ui/pins';
 import { Screen } from '../../../ui/Screen';
+import { SheetCard } from '../../../ui/SheetCard';
 import { EmptyState, Muted, Section } from '../../../ui/Section';
 import { colors, font, spacing } from '../../../ui/theme';
 
@@ -20,7 +21,7 @@ export default function BlockHome() {
   const { blockId } = useLocalSearchParams<{ blockId: string }>();
   const { block, latest, draft, changes, dirty, loading } = usePlanDraft(blockId);
   const pins = usePins(blockId);
-  const flow = useImportFlow();
+  const flow = useImportFlow({ blockId });
   const base = `/boss/${blockId}`;
 
   if (loading) return <Screen>{null}</Screen>;
@@ -46,6 +47,8 @@ export default function BlockHome() {
         {staleDay ? <Text style={styles.status}>The published plan is for {fmtDay(latest.content.day)}. Tap Plan to start today’s.</Text> : null}
       </Card>
 
+      {block.sheet ? <SheetCard sheet={block.sheet} /> : null}
+
       <Section title="1 · Plan">
         <View style={styles.grid}>
           <Button size="big" title="Plan" subtitle={draft ? 'Continue draft' : latest ? 'Start from latest' : 'Start the first plan'} onPress={() => router.push(`${base}/plan`)} />
@@ -64,7 +67,7 @@ export default function BlockHome() {
             subtitle={pins.open.length ? pinText(pins.open[0].pin) : 'Nothing flagged'}
             onPress={() => router.push(`/pins?blockId=${blockId}`)}
           />
-          <Button variant="secondary" title="Import a file" subtitle="Crew updates, a suggestion, or a newer plan" busy={flow.busy} onPress={flow.pick} />
+          <Button variant="secondary" title="Import a file" subtitle="A map for this block, crew updates, a suggestion or a newer plan" busy={flow.busy} onPress={flow.pick} />
         </View>
       </Section>
 

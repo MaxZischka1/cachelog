@@ -9,6 +9,7 @@ import { fmtCountsInline, fmtHa, speciesFromBlock } from '../format';
 import { nextName, removeCache, removeHazard, removePiece, upsertCache, upsertHazard, upsertPiece } from '../planEdits';
 import { colors, font, radius, spacing } from '../theme';
 import { CacheSheet, HazardSheet, PieceSheet } from './FeatureSheets';
+import { pieceRxFromSheet } from '../../import/pdfSheet';
 
 type Edit = (fn: (c: PlanContent) => PlanContent) => Promise<void>;
 
@@ -91,7 +92,9 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
             if (existing) {
               void run(upsertPiece({ ...existing, polygon: ring }));
             } else {
-              setSheet({ type: 'piece', isNew: true, value: { id: newId(), name: nextName('Piece', content.pieces), polygon: ring } });
+              // Prescription defaults to the one printed on the block's map sheet, if any.
+              const prescription = pieceRxFromSheet(block.sheet);
+              setSheet({ type: 'piece', isNew: true, value: { id: newId(), name: nextName('Piece', content.pieces), polygon: ring, ...(prescription ? { prescription } : {}) } });
             }
           },
         };
