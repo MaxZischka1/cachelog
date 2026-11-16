@@ -19,6 +19,21 @@ The map (MapLibre) uses native code, so **Expo Go won't work**. You need a devel
 
 With a Mac and Xcode, `npx expo run:ios --device` does the same build locally.
 
+## Make commands
+
+Run `make` in the project folder to list them. The ones you'll use:
+
+```
+make update     # build and install on the iPhone plugged in by USB (unlock it first)
+make sim        # same, in the iOS simulator (make sim SIM="iPhone 17")
+make check      # typecheck + tests + confirm the app bundles (about 20 s)
+make push       # make check, then push your commits to GitHub (refuses on main)
+make devices    # phones and simulators the Mac can see
+```
+
+`make update` regenerates the native ios/ folder by itself when app.json or the packages changed.
+With two phones plugged in, pick one: `make update DEVICE=<id from make devices>`.
+
 ## Checks
 
 ```
