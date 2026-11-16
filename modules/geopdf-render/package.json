@@ -1,0 +1,7 @@
+{
+  "name": "geopdf-render",
+  "version": "0.1.0",
+  "description": "Renders a PDF page to PNG on iOS (PDFKit) so GeoPDF maps can be shown as raster layers",
+  "private": true,
+  "main": "index.ts"
+}

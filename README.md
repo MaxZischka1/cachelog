@@ -22,7 +22,7 @@ With a Mac and Xcode, `npx expo run:ios --device` does the same build locally.
 ## Checks
 
 ```
-npm test            # 234 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import
+npm test            # 239 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import
 npm run typecheck
 npx expo export --platform ios   # confirms the app bundles
 ```
@@ -40,7 +40,7 @@ See `docs/GAP-REVIEW.md` for what changed in v0.2 and why.
 ## Not done yet / needs a real phone
 
 - Nothing has run on a device yet. Expect MapLibre, location and file-sharing issues to show up in the first test.
-- GeoPDFs: their position is read but they can't be displayed yet. Convert to GeoTIFF first (QGIS: Raster → Conversion → Translate, or `gdal_translate in.pdf out.tif`).
+- GeoPDFs import as map images on iPhone (native PDFKit module in `modules/geopdf-render`; rebuild the app after pulling it). Only the georeferenced map frame is drawn, so legends and planting forms on the same page stay off the map. Checked against a real ALPAC plant opening map; not yet on a device. Multi-page PDFs import the first map page. Android can't draw them yet: convert to GeoTIFF (`gdal_translate in.pdf out.tif`).
 - Map label font and the OpenFreeMap basemap style are unverified (the build machine couldn't reach them).
 - Opening `.cachelog` files from AirDrop is wired up (file type registered, `/open` route) but untested on a device.
 - Sharing is still file passing. No camp Wi-Fi / phone-to-phone sync, contractor web dashboard, quality plots or radio-tag integration yet (see SPEC.md v2/later).

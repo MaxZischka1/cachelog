@@ -4,11 +4,35 @@ import { Alert } from 'react-native';
 import { decideImport, diffPlans, mergePlans, parsePlanFile, parseSuggestion, rebaseDraft, sniffFile, startDraft } from '../../core/plan';
 import { parseLogFile } from '../../core/tally';
 import type { Draft } from '../../core/types';
+import { isMapFileName } from '../../import';
 import { confirm, showError } from '../alerts';
 import { pickFile, readTextFile } from '../files';
 import { fmtDateTime } from '../format';
 import { extractImages } from '../planFileImages';
 import { useBump, useStore } from '../store';
+
+const MAP_FILE_HINT = 'To add a block map, open the block, then Map layers > Import map file.';
+
+/**
+ * Read a picked or opened file as Cachelog text. Map files and other binary files get a plain
+ * message instead of the system's "text encoding can't be determined" error.
+ * Resolves null (after telling the user) when the file is a map.
+ */
+async function readCachelogText(uri: string, name: string): Promise<string | null> {
+  if (isMapFileName(name)) {
+    Alert.alert('That is a map file', `This button opens plans, crew updates and suggestions sent from Cachelog. ${MAP_FILE_HINT}`);
+    return null;
+  }
+  try {
+    return await readTextFile(uri);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    if (/encoding/i.test(detail)) {
+      throw new Error(`This isn't a Cachelog file. Pick a plan, crew update or suggestion file sent from Cachelog. ${MAP_FILE_HINT}`);
+    }
+    throw e;
+  }
+}
 
 /**
  * One way in for every Cachelog file, whether picked in the app or opened from AirDrop / Files:
@@ -121,7 +145,7 @@ export function useImportFlow() {
         return;
       }
 
-      Alert.alert("Not a Cachelog file", 'Pick a plan, crew update or suggestion file sent from Cachelog. To add a block map, use Map layers.');
+      Alert.alert('Not a Cachelog file', `Pick a plan, crew update or suggestion file sent from Cachelog. ${MAP_FILE_HINT}`);
     },
     [store, bump],
   );
@@ -146,13 +170,13 @@ export function useImportFlow() {
     () =>
       run(async () => {
         const picked = await pickFile();
-        return picked ? readTextFile(picked.uri) : null;
+        return picked ? readCachelogText(picked.uri, picked.name) : null;
       }),
     [run],
   );
 
   /** Open a file the system handed to the app (AirDrop, Files, Mail). */
-  const open = useCallback((uri: string) => run(() => readTextFile(uri)), [run]);
+  const open = useCallback((uri: string) => run(() => readCachelogText(uri, uri)), [run]);
 
   return { busy, pick, open };
 }

@@ -11,7 +11,7 @@ Legend: **[v1]** spring pilot with one crew · **[v2]** after the pilot · **[la
 - [v1] Import a GeoTIFF block map and show it offline over the basemap
 - [v1] Import KML / GeoJSON boundaries and pieces
 - [v1] Read GeoPDF georeferencing (LGIDict / Measure+GPTS) so the map can be placed correctly
-- [v2] Render GeoPDF on-device (native PDFKit) — v1 fallback: convert to GeoTIFF on a laptop
+- [v2] Render GeoPDF on-device (native PDFKit, `modules/geopdf-render`, iPhone only) — Android/older builds: convert to GeoTIFF on a laptop
 - [v2] Shapefile import
 - [v1] Offline basemap region download for the block area
 - [v1] Show own GPS position, heading, accuracy

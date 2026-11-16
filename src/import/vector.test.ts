@@ -1,6 +1,6 @@
 import type { GeoJSONFeatureCollection } from '../core/types';
 import { featuresToPieces, kmlToGeoJSON, normalizeGeoJSON } from './index';
-import { describeGeoPdf, extensionOf, layerName, vectorResult } from './helpers';
+import { chooseGeoPdfPage, describeGeoPdf, extensionOf, isMapFileName, layerName, vectorResult } from './helpers';
 
 const KML = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -109,5 +109,26 @@ describe('helpers', () => {
     expect(msg).toMatch(/52\.00000, -123\.00000/);
     expect(msg).toMatch(/EPSG:26910/);
     expect(describeGeoPdf(null)).toMatch(/no georeferencing/);
+  });
+
+  test('map files are told apart from Cachelog files', () => {
+    expect(isMapFileName('BLK_5050853586.pdf')).toBe(true);
+    expect(isMapFileName('file:///tmp/Block%2042.TIF')).toBe(true);
+    expect(isMapFileName('bounds.kml')).toBe(true);
+    expect(isMapFileName('plan-v3.cachelog')).toBe(false);
+    expect(isMapFileName('export.json')).toBe(false);
+    expect(isMapFileName('noext')).toBe(false);
+  });
+
+  test('GeoPDF import uses the first map page and warns about the others', () => {
+    const corners: [[number, number], [number, number], [number, number], [number, number]] = [[-123, 52], [-122.9, 52], [-122.9, 51.9], [-123, 51.9]];
+    const one = chooseGeoPdfPage({ pages: [{ pageIndex: 2, corners }] });
+    expect(one.page.pageIndex).toBe(2);
+    expect(one.warnings).toEqual([]);
+
+    const three = chooseGeoPdfPage({ pages: [{ pageIndex: 0, corners }, { pageIndex: 1, corners }, { pageIndex: 3, corners }] });
+    expect(three.page.pageIndex).toBe(0);
+    expect(three.warnings).toHaveLength(1);
+    expect(three.warnings[0]).toMatch(/3 map pages\. Page 1 was imported; to use page 2, 4 as well, save each/);
   });
 });

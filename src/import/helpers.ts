@@ -12,6 +12,16 @@ export function extensionOf(nameOrUri: string): string {
   return dot > 0 ? base.slice(dot + 1).toLowerCase() : '';
 }
 
+const MAP_EXTENSIONS = new Set(['pdf', 'tif', 'tiff', 'kml', 'kmz', 'geojson', 'shp', 'shx', 'dbf', 'zip', 'jpg', 'jpeg', 'png']);
+
+/**
+ * True for files that belong in Map layers, not the Cachelog file import (plans, updates,
+ * suggestions). Plain .json is left out: it could be either, and the content check sorts it out.
+ */
+export function isMapFileName(nameOrUri: string): boolean {
+  return MAP_EXTENSIONS.has(extensionOf(nameOrUri));
+}
+
 /** Display name: file name without folder or extension. */
 export function layerName(nameOrUri: string): string {
   let base = nameOrUri.split(/[?#]/)[0];
@@ -28,13 +38,20 @@ export function layerName(nameOrUri: string): string {
 
 const fmt = (v: number) => v.toFixed(5);
 
-/** User-facing message for a GeoPDF until on-device PDF rendering exists. */
+/**
+ * User-facing message when a PDF can't become a map layer: either it has no georeferencing, or
+ * this build has no PDF renderer (Android, or an iPhone build from before PDF support).
+ */
 export function describeGeoPdf(info: GeoPdfInfo | null): string {
   const how =
     'Convert it to GeoTIFF on a laptop and import the .tif instead: in QGIS, add the PDF as a raster layer and use ' +
     'Raster > Conversion > Translate (save as GeoTIFF), or run: gdal_translate -of GTiff -co COMPRESS=DEFLATE map.pdf map.tif';
   if (!info) {
-    return `This PDF has no georeferencing that Cachelog can read, and PDF maps can't be shown on the phone yet. ${how}`;
+    return (
+      "This PDF has no georeferencing that Cachelog can read, so it can't be placed on the map. " +
+      'Check that it is a GeoPDF: Avenza Maps or QGIS show coordinates for one. A plain scan or printout has none; ' +
+      'georeference it in QGIS (Raster > Georeferencer), save it as a GeoTIFF and import the .tif.'
+    );
   }
   const lines = info.pages.map((p) => {
     const [tl, tr, br, bl] = p.corners;
@@ -45,9 +62,24 @@ export function describeGeoPdf(info: GeoPdfInfo | null): string {
     );
   });
   return (
-    `This GeoPDF is georeferenced, but PDF maps can't be drawn on the phone yet. ${how}\n\n` +
+    `This GeoPDF is georeferenced, but this version of the app can't draw PDF maps (only the iPhone app can, ` +
+    `from the build that added PDF support). ${how}\n\n` +
     `Georeference found (lat, lon):\n${lines.join('\n')}`
   );
+}
+
+/** Which georeferenced page of a GeoPDF to import: the first. Warns when there are others. */
+export function chooseGeoPdfPage(info: GeoPdfInfo): { page: GeoPdfInfo['pages'][number]; warnings: string[] } {
+  const page = info.pages[0];
+  const warnings: string[] = [];
+  if (info.pages.length > 1) {
+    const others = info.pages.slice(1).map((p) => p.pageIndex + 1).join(', ');
+    warnings.push(
+      `This PDF has ${info.pages.length} map pages. Page ${page.pageIndex + 1} was imported; ` +
+        `to use page ${others} as well, save ${info.pages.length > 2 ? 'each' : 'it'} as its own PDF and import that.`,
+    );
+  }
+  return { page, warnings };
 }
 
 function firstCoord(c: unknown): [number, number] | null {

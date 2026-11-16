@@ -14,7 +14,7 @@
 | 4 | Three different import buttons for three file types; files had to be found in a picker | Friction 12 times every morning | **Built: one import, and tapping an AirDropped file opens it in the app** (needs a device test) |
 | 5 | Planters could not report piece progress | The boss's completion map only moved when the boss updated it | **Built: "My piece" status on the planter home** |
 | 6 | Block home was a flat list of eight buttons | Not "organized, simple" | **Built: grouped as Plan → Crew → End of day → Setup** |
-| 7 | GeoPDF maps cannot be displayed | Block maps often arrive as GeoPDFs (to confirm with crew bosses) | Open. Needs a small Swift module, built and tested on a Mac |
+| 7 | GeoPDF maps cannot be displayed | Block maps often arrive as GeoPDFs (to confirm with crew bosses) | **Built: local Swift/PDFKit module `modules/geopdf-render`** renders the georeferenced page to PNG (iPhone only; needs a device test with a real GeoPDF) |
 | 8 | Sharing is still file passing (AirDrop) | Works offline and needs no server, but is manual. Real sync needs a camp server or phone-to-phone (Multipeer) networking | Open. The file formats are the sync protocol, so a transport can be added underneath without changing the app's data model |
 | 9 | Never run on a phone | Map, GPS, file opening and sharing are all untested on a device | Open. First job on the Mac |
 | 10 | No photos on pins, no check-ins, no quality plots, no contractor web view | Useful, not blocking | Open (see SPEC.md) |
@@ -41,6 +41,6 @@ All three file types end in `.cachelog` and the app registers that type with iOS
 
 ## Suggested order from here
 1. Build on the Mac and run it on an iPhone; fix what breaks (map, file opening).
-2. GeoPDF rendering module (Swift/PDFKit).
+2. ~~GeoPDF rendering module (Swift/PDFKit).~~ Built; test it with a real block GeoPDF.
 3. Pilot-crew interviews: is tally reconciliation the money problem, and do bosses actually co-plan?
 4. Phone-to-phone sync at camp (Multipeer Connectivity) so nobody passes files.

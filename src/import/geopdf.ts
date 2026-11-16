@@ -15,8 +15,21 @@ import type { LngLat } from '../core/types';
 import { applyAffine, fitAffine, type Affine } from './affine';
 import { crsDefinition, epsgFromName, fromWgs84, localUtmFor, toWgs84 } from './crs';
 
+export type Corners = [LngLat, LngLat, LngLat, LngLat];
+
 export interface GeoPdfInfo {
-  pages: { pageIndex: number; corners: [LngLat, LngLat, LngLat, LngLat]; crs?: string }[];
+  pages: {
+    pageIndex: number;
+    /** Whole page (crop box) as displayed: top-left, top-right, bottom-right, bottom-left. */
+    corners: Corners;
+    crs?: string;
+    /**
+     * The georeferenced map frame when it is smaller than the page (ISO /VP viewports), so the
+     * legend and title block can be left out. `box` is [x1, y1, x2, y2] in PDF user space
+     * (x1 < x2, y1 < y2); `corners` are the frame's corners as displayed, in the same order.
+     */
+    region?: { box: [number, number, number, number]; corners: Corners };
+  }[];
 }
 
 type Js = number | string | boolean | null | Js[] | { [k: string]: Js };
@@ -122,9 +135,11 @@ function crsName(gcs: { [k: string]: Js } | null): string | undefined {
 
 // ---------------------------------------------------------------- ISO 32000 /VP /Measure /GEO
 
-function fromViewports(vps: Js, corners: [number, number][]): { corners: LngLat[]; crs?: string } | null {
+type Hit = { corners: LngLat[]; crs?: string; region?: { box: [number, number, number, number]; corners: LngLat[] } };
+
+function fromViewports(vps: Js, corners: [number, number][], rotation: number): Hit | null {
   const list = Array.isArray(vps) ? vps : asDict(vps) ? [vps] : [];
-  let best: { corners: LngLat[]; crs?: string; area: number } | null = null;
+  let best: (Hit & { area: number }) | null = null;
   for (const raw of list) {
     const vp = asDict(raw);
     if (!vp) continue;
@@ -134,6 +149,7 @@ function fromViewports(vps: Js, corners: [number, number][]): { corners: LngLat[
     if (bb.length !== 4) continue;
     const x1 = Math.min(bb[0], bb[2]), x2 = Math.max(bb[0], bb[2]);
     const y1 = Math.min(bb[1], bb[3]), y2 = Math.max(bb[1], bb[3]);
+    if (x2 - x1 <= 0 || y2 - y1 <= 0) continue;
     const gpts = nums(measure.GPTS);
     let lpts = nums(measure.LPTS);
     if (lpts.length === 0) lpts = nums(measure.Bounds);
@@ -148,17 +164,26 @@ function fromViewports(vps: Js, corners: [number, number][]): { corners: LngLat[
     const pagePts: [number, number][] = [];
     const lls: LngLat[] = [];
     for (let i = 0; i < k; i++) {
+      // LPTS are fractions of the BBox *as written*: (0, 0) is its first corner. Writers such as
+      // ArcGIS give the top edge first ([x0 yTop x1 yBottom]); sorting would flip the map.
+      // This matches GDAL's PDF driver.
       const u = lpts[2 * i], v = lpts[2 * i + 1];
-      pagePts.push([x1 + u * (x2 - x1), y1 + v * (y2 - y1)]);
+      pagePts.push([bb[0] + u * (bb[2] - bb[0]), bb[1] + v * (bb[3] - bb[1])]);
       const a = gpts[2 * i], b = gpts[2 * i + 1];
       lls.push(swapped ? [a, b] : [b, a]);
     }
     const ll = cornersFromControl(pagePts, lls, corners);
+    const frame = cornersFromControl(pagePts, lls, pageCorners({ x: x1, y: y1, width: x2 - x1, height: y2 - y1 }, rotation));
     if (!ll || !finiteCorners(ll)) continue;
     const area = (x2 - x1) * (y2 - y1);
-    if (!best || area > best.area) best = { corners: ll, crs: crsName(asDict(measure.GCS)), area };
+    if (!best || area > best.area) {
+      best = { corners: ll, crs: crsName(asDict(measure.GCS)), area };
+      if (frame && finiteCorners(frame)) best.region = { box: [x1, y1, x2, y2], corners: frame };
+    }
   }
-  return best ? { corners: best.corners, crs: best.crs } : null;
+  if (!best) return null;
+  const { area: _area, ...hit } = best;
+  return hit;
 }
 
 // ---------------------------------------------------------------- TerraGo LGIDict
@@ -197,7 +222,7 @@ function lgiProjection(p: { [k: string]: Js } | null): { def: string | null; lab
   }
 }
 
-function fromLgiDict(raw: Js, corners: [number, number][]): { corners: LngLat[]; crs?: string } | null {
+function fromLgiDict(raw: Js, corners: [number, number][]): Hit | null {
   const list = Array.isArray(raw) ? raw : [raw];
   for (const item of list) {
     const d = asDict(item);
@@ -243,17 +268,19 @@ export async function readGeoPdfGeoreference(buf: ArrayBuffer): Promise<GeoPdfIn
 
   pages.forEach((page, pageIndex) => {
     const box = page.getCropBox();
-    const corners = pageCorners(box, page.getRotation().angle);
+    const rotation = page.getRotation().angle;
+    const corners = pageCorners(box, rotation);
     const node = page.node;
-    let hit = fromViewports(toJs(ctx, node.get(PDFName.of('VP'))), corners);
+    let hit = fromViewports(toJs(ctx, node.get(PDFName.of('VP'))), corners, rotation);
     if (!hit) {
       const lgi = toJs(ctx, node.get(PDFName.of('LGIDict')));
       if (lgi) hit = fromLgiDict(lgi, corners);
     }
     if (!hit && catalogLgi && (pageIndex === 0 || pages.length === 1)) hit = fromLgiDict(catalogLgi, corners);
     if (hit) {
-      const entry: GeoPdfInfo['pages'][number] = { pageIndex, corners: hit.corners as [LngLat, LngLat, LngLat, LngLat] };
+      const entry: GeoPdfInfo['pages'][number] = { pageIndex, corners: hit.corners as Corners };
       if (hit.crs) entry.crs = hit.crs;
+      if (hit.region) entry.region = { box: hit.region.box, corners: hit.region.corners as Corners };
       result.pages.push(entry);
     }
   });

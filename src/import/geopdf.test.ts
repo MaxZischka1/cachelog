@@ -24,23 +24,27 @@ function expectNear(actual: LngLat[], expected: LngLat[], tolM = 1) {
 const E0 = 500000, N0 = 5800000, M = 10, X1 = 36, Y1 = 36, X2 = 576, Y2 = 756;
 const pageToUtm = (x: number, y: number): LngLat => inv(E0 + (x - X1) * M, N0 + (y - Y1) * M);
 const EXPECTED: LngLat[] = [pageToUtm(0, 792), pageToUtm(612, 792), pageToUtm(612, 0), pageToUtm(0, 0)];
+const FRAME: LngLat[] = [pageToUtm(X1, Y2), pageToUtm(X2, Y2), pageToUtm(X2, Y1), pageToUtm(X1, Y1)];
 
-async function avenzaStylePdf(opts: { rotate?: number } = {}): Promise<ArrayBuffer> {
+/** `topFirst` writes the BBox as [x0 yTop x1 yBottom], as ArcGIS does. */
+async function avenzaStylePdf(opts: { rotate?: number; topFirst?: boolean } = {}): Promise<ArrayBuffer> {
   const doc = await PDFDocument.create();
   const page = doc.addPage([612, 792]);
   if (opts.rotate) page.setRotation(degrees(opts.rotate));
   const ctx = doc.context;
   // GPTS: lat, lon of the frame corners in LPTS order (unit square of the BBox).
+  // LPTS are fractions of the BBox as written: (0, 0) is its first corner.
+  const bbox = opts.topFirst ? [X1, Y2, X2, Y1] : [X1, Y1, X2, Y2];
   const lpts = [0, 0, 0, 1, 1, 1, 1, 0];
   const gpts: number[] = [];
   for (let i = 0; i < 4; i++) {
-    const [lon, lat] = inv(E0 + lpts[2 * i] * (X2 - X1) * M, N0 + lpts[2 * i + 1] * (Y2 - Y1) * M);
+    const [lon, lat] = pageToUtm(bbox[0] + lpts[2 * i] * (bbox[2] - bbox[0]), bbox[1] + lpts[2 * i + 1] * (bbox[3] - bbox[1]));
     gpts.push(lat, lon);
   }
   const gcs = ctx.obj({ Type: 'PROJCS', EPSG: 26910 });
   gcs.set(PDFName.of('WKT'), PDFString.of('PROJCS["NAD83 / UTM zone 10N",GEOGCS["NAD83"]]'));
   const measure = ctx.obj({ Type: 'Measure', Subtype: 'GEO', Bounds: lpts, GPTS: gpts, LPTS: lpts, GCS: ctx.register(gcs) });
-  const mapVp = ctx.obj({ Type: 'Viewport', BBox: [X1, Y1, X2, Y2], Measure: measure });
+  const mapVp = ctx.obj({ Type: 'Viewport', BBox: bbox, Measure: measure });
   // A decoy viewport (legend) without georeferencing.
   const legend = ctx.obj({ Type: 'Viewport', BBox: [0, 0, 30, 30] });
   page.node.set(PDFName.of('VP'), ctx.obj([legend, ctx.register(mapVp)]));
@@ -64,6 +68,27 @@ describe('readGeoPdfGeoreference', () => {
     expectNear(info!.pages[0].corners, [bl, tl, tr, br]);
   });
 
+  test('BBox written top edge first is not flipped (ArcGIS export)', async () => {
+    const info = await readGeoPdfGeoreference(await avenzaStylePdf({ topFirst: true }));
+    expectNear(info!.pages[0].corners, EXPECTED);
+    expectNear(info!.pages[0].region!.corners, FRAME);
+    // North is up: the top edge is north of the bottom edge.
+    expect(info!.pages[0].corners[0][1]).toBeGreaterThan(info!.pages[0].corners[3][1]);
+  });
+
+  test('map frame region: box in user space and its own corners', async () => {
+    const info = await readGeoPdfGeoreference(await avenzaStylePdf());
+    expect(info!.pages[0].region!.box).toEqual([X1, Y1, X2, Y2]);
+    expectNear(info!.pages[0].region!.corners, FRAME);
+  });
+
+  test('map frame region on a page with /Rotate 90', async () => {
+    const info = await readGeoPdfGeoreference(await avenzaStylePdf({ rotate: 90, topFirst: true }));
+    const [tl, tr, br, bl] = FRAME;
+    expect(info!.pages[0].region!.box).toEqual([X1, Y1, X2, Y2]);
+    expectNear(info!.pages[0].region!.corners, [bl, tl, tr, br]);
+  });
+
   test('TerraGo LGIDict with CTM and UTM projection', async () => {
     const doc = await PDFDocument.create();
     const page = doc.addPage([612, 792]);
@@ -82,6 +107,7 @@ describe('readGeoPdfGeoreference', () => {
     const info = await readGeoPdfGeoreference((await doc.save()).slice().buffer as ArrayBuffer);
     expect(info!.pages[0].crs).toMatch(/LGIDict UT zone 10N/);
     expectNear(info!.pages[0].corners, EXPECTED);
+    expect(info!.pages[0].region).toBeUndefined();
   });
 
   test('plain PDF -> null', async () => {
