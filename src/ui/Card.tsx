@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.hairline,
     padding: spacing.lg,
     gap: spacing.sm,
   },

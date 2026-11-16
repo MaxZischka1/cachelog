@@ -10,7 +10,7 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Settings' }} />
-      <SetupForm current={settings} save={save} onSaved={(s) => router.replace(s.role === 'crew-boss' ? '/boss' : '/planter')} />
+      <SetupForm current={settings} save={save} onSaved={() => router.replace('/')} />
       {settings ? <Muted>Device ID: {settings.deviceId}</Muted> : null}
     </Screen>
   );

@@ -307,7 +307,32 @@ export interface PinResolvedEntry extends LogBase {
   note?: string;
 }
 
-export type LogEntry = CacheDropEntry | BagUpEntry | TallyEntry | PieceStatusEntry | VoidEntry | PinEntry | PinResolvedEntry;
+/**
+ * A short message to the crew on this block. Kept to MESSAGE_MAX characters so the same message
+ * can later go over the LoRa radios (RAK4631); for now it travels in update and plan files.
+ */
+export interface MessageEntry extends LogBase {
+  type: 'message';
+  text: string;
+}
+
+/**
+ * A planter's GPS track for one shift, sent to the crew boss only when the planter chooses.
+ * Recorded tracks stay on the phone (src/tracking) until then.
+ */
+export interface TrackEntry extends LogBase {
+  type: 'track';
+  planterId?: ID;
+  startedAt: Timestamp;
+  endedAt: Timestamp;
+  /** Simplified path, split where the GPS had gaps. */
+  lines: LngLat[][];
+  distanceM: number;
+  /** Ground covered: the path widened to the planter's swath (tree spacing). */
+  coveredHa: number;
+}
+
+export type LogEntry = CacheDropEntry | BagUpEntry | TallyEntry | PieceStatusEntry | VoidEntry | PinEntry | PinResolvedEntry | MessageEntry | TrackEntry;
 
 // ---------- Minimal GeoJSON ----------
 
@@ -337,4 +362,6 @@ export interface DeviceSettings {
   /** When role is planter: which planter in the plan this phone belongs to. */
   planterId?: ID;
   activeBlockId?: ID;
+  /** Messages created after this were not seen yet (the Messages tab badge). */
+  messagesReadAt?: Timestamp;
 }

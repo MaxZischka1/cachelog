@@ -54,9 +54,9 @@ export function Flag({ text, tone = 'warning' }: { text: string; tone?: 'warning
 }
 
 const styles = StyleSheet.create({
-  section: { gap: spacing.sm, marginBottom: spacing.xl },
+  section: { gap: spacing.sm, marginTop: spacing.sm },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: font.large, fontWeight: '800', color: colors.text },
+  title: { fontSize: font.small, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
   empty: { alignItems: 'center', padding: spacing.xl, gap: spacing.md },
   emptyTitle: { fontSize: font.large, fontWeight: '700', color: colors.text, textAlign: 'center' },
   emptyMessage: { fontSize: font.body, color: colors.textMuted, textAlign: 'center' },

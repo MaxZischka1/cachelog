@@ -36,6 +36,8 @@ export interface BlockMapProps {
   onSelect?: (sel: { type: 'cache' | 'piece' | 'hazard' | 'pin'; id: ID } | null) => void;
   /** Crew pins drawn above everything in the plan. */
   pins?: MapPin[];
+  /** GPS shift tracks: `mine` drawn bold, the crew's thin. */
+  tracks?: { lines: LngLat[][]; mine?: boolean }[];
   style?: StyleProp<ViewStyle>;
 }
 
@@ -71,6 +73,7 @@ export function BlockMap(props: BlockMapProps): JSX.Element {
     showUserLocation = true,
     onSelect,
     pins,
+    tracks,
     style,
   } = props;
 
@@ -248,6 +251,31 @@ export function BlockMap(props: BlockMapProps): JSX.Element {
               </GeoJSONSource>
             ) : null,
           )}
+
+          {/* GPS shift tracks */}
+          {tracks?.length ? (
+            <GeoJSONSource
+              id="cl-track-src"
+              data={{
+                type: 'FeatureCollection',
+                features: tracks.flatMap((t, i) =>
+                  t.lines.filter((l) => l.length >= 2).map((l, j) => ({
+                    type: 'Feature' as const,
+                    id: `${i}-${j}`,
+                    properties: { mine: !!t.mine },
+                    geometry: { type: 'LineString' as const, coordinates: l },
+                  })),
+                ),
+              } as any}
+            >
+              <Layer
+                id="cl-track-line"
+                type="line"
+                paint={{ 'line-color': COLORS.track, 'line-width': ['case', ['get', 'mine'], 3, 1.5] as any, 'line-opacity': ['case', ['get', 'mine'], 0.9, 0.6] as any }}
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              />
+            </GeoJSONSource>
+          ) : null}
 
           {/* Previous version (review screen): faded + dashed, underneath */}
           <GeoJSONSource id="cl-ghost-poly-src" data={ghostFc.polygons}>

@@ -44,7 +44,7 @@ export function useUserLocationInternal(enabled: boolean): UserLocationState {
 
     (async () => {
       try {
-        // When-in-use only (SPEC: no background location in v1).
+        // When-in-use only for the map; shift tracking (src/tracking) asks for Always separately.
         let perm = await Location.getForegroundPermissionsAsync();
         if (perm.status !== Location.PermissionStatus.GRANTED && perm.canAskAgain) {
           perm = await Location.requestForegroundPermissionsAsync();

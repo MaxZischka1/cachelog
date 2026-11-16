@@ -50,7 +50,7 @@ export function Button({ title, onPress, variant = 'primary', size = 'normal', d
 
 const variants: Record<ButtonVariant, { bg: string; text: string; border: string }> = {
   primary: { bg: colors.primary, text: colors.primaryText, border: colors.primary },
-  secondary: { bg: colors.secondary, text: colors.secondaryText, border: colors.border },
+  secondary: { bg: colors.secondary, text: colors.secondaryText, border: colors.borderLight },
   danger: { bg: colors.danger, text: colors.dangerText, border: colors.danger },
   ghost: { bg: 'transparent', text: colors.text, border: colors.borderLight },
 };
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   base: {
     minHeight: touch.min,
     borderRadius: radius,
-    borderWidth: 2,
+    borderWidth: 1.5,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     justifyContent: 'center',
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   small: { minHeight: 48, paddingHorizontal: spacing.md },
   inner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   texts: { alignItems: 'center', flexShrink: 1 },
-  title: { fontSize: font.large, fontWeight: '700', textAlign: 'center' },
+  title: { fontSize: font.large, fontWeight: '700', textAlign: 'center', letterSpacing: -0.2 },
   titleBig: { fontSize: font.large + 2 },
   titleSmall: { fontSize: font.body },
   subtitle: { fontSize: font.small, marginTop: 2, textAlign: 'center' },

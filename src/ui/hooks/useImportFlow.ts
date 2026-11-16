@@ -63,7 +63,7 @@ export function useImportFlow(opts: { blockId?: ID } = {}) {
         const decision = decideImport(file, local);
         // Pins ride along with every plan file; take them even when the plan itself is not newer.
         if (file.pins?.length && (decision.action === 'import' || local)) await store.appendLog(file.pins);
-        const home = isBoss ? `/boss/${file.block.id}` : '/planter';
+        const home = isBoss ? `/boss/${file.block.id}` : '/';
         if (decision.action === 'skip') {
           if (settings) await store.saveSettings({ ...settings, activeBlockId: file.block.id });
           bump();
@@ -184,10 +184,10 @@ export function useImportFlow(opts: { blockId?: ID } = {}) {
       }
       const blockIds = [...new Set(outcomes.map((o) => o.block.id))];
       if (blockIds.length === 1 && blockIds[0] !== currentBlockId) {
-        router.dismissTo('/boss');
+        router.dismissTo('/');
         router.push(`/boss/${blockIds[0]}`);
       } else if (blockIds.length > 1) {
-        router.dismissTo('/boss');
+        router.dismissTo('/');
       }
     },
     [store, bump, currentBlockId],

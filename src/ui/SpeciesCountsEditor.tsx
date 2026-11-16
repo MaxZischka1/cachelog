@@ -47,7 +47,7 @@ export function SpeciesCountsEditor({ value, onChange, speciesOptions = [], quic
               value={row.species}
               onChangeText={(t) => setRow(i, { species: t })}
               placeholder="Sp"
-              placeholderTextColor={colors.borderLight}
+              placeholderTextColor={colors.placeholder}
               autoCapitalize="words"
               autoCorrect={false}
               maxLength={6}

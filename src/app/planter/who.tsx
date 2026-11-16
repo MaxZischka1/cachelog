@@ -12,7 +12,8 @@ export default function WhoAmI() {
   if (!d.plan) {
     return (
       <Screen>
-        <EmptyState title="Import a plan first" />
+        <Stack.Screen options={{ title: 'Which planter are you?' }} />
+        <EmptyState title="Import a plan first" message="Your name comes from the crew list in the plan." />
       </Screen>
     );
   }
@@ -20,7 +21,7 @@ export default function WhoAmI() {
     try {
       await d.update({ planterId: id });
       if (router.canGoBack()) router.back();
-      else router.replace('/planter');
+      else router.replace('/');
     } catch (e) {
       showError('Could not save', e);
     }

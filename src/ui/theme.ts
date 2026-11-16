@@ -1,17 +1,23 @@
 /**
  * Outdoor theme: high contrast, large type, big touch targets (gloves, cold, sun glare).
+ * Quiet surfaces (white cards on a warm off-white page, hairline borders) so the numbers and the
+ * one main action on each screen carry the weight. Text stays near-black for sun glare.
  */
 export const colors = {
-  bg: '#FFFFFF',
-  surface: '#F2F2F0',
-  text: '#000000',
-  textMuted: '#3A3A3A',
+  bg: '#F5F5F0',
+  surface: '#FFFFFF',
+  text: '#111111',
+  textMuted: '#4A4A45',
   border: '#1A1A1A',
-  borderLight: '#9E9E9E',
+  borderLight: '#DAD9D2',
+  hairline: '#E7E6E0',
+  placeholder: '#8C8B84',
   primary: '#1B5E20', // dark forest green
+  primarySoft: '#E5EFE3',
   primaryText: '#FFFFFF',
-  secondary: '#E8E8E4',
-  secondaryText: '#000000',
+  chart: '#2E7D32',
+  secondary: '#FFFFFF',
+  secondaryText: '#111111',
   danger: '#B71C1C',
   dangerText: '#FFFFFF',
   warning: '#8A4B00',
@@ -44,4 +50,4 @@ export const touch = {
   big: 72,
 } as const;
 
-export const radius = 10;
+export const radius = 14;

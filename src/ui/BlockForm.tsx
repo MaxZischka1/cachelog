@@ -112,7 +112,7 @@ export function BlockForm({ initial, onSubmit, submitLabel }: { initial: Block |
               value={r.species}
               onChangeText={(t) => setRow(i, { species: t })}
               placeholder="Sp"
-              placeholderTextColor={colors.borderLight}
+              placeholderTextColor={colors.placeholder}
               autoCapitalize="words"
               autoCorrect={false}
               accessibilityLabel={`Species ${i + 1}`}
@@ -123,7 +123,7 @@ export function BlockForm({ initial, onSubmit, submitLabel }: { initial: Block |
               value={r.price}
               onChangeText={(t) => setRow(i, { price: t })}
               placeholder="0.16"
-              placeholderTextColor={colors.borderLight}
+              placeholderTextColor={colors.placeholder}
               keyboardType="decimal-pad"
               accessibilityLabel={`Price for ${r.species || 'species'}`}
             />

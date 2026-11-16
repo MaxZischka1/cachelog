@@ -39,13 +39,13 @@ export function openPins(log: LogEntry[], blockId?: ID): PinEntry[] {
 }
 
 /**
- * The entries to send along with a plan so everyone sees the same pins: pins, their resolutions,
- * and any voids of those. Raw (not filtered to active), so a resolution or void made on one phone
- * also takes effect on phones that already had the pin.
+ * The entries to send along with a plan so everyone sees the same pins and crew messages: pins,
+ * their resolutions, messages, and any voids of those. Raw (not filtered to active), so a
+ * resolution or void made on one phone also takes effect on phones that already had the pin.
  */
 export function pinEntriesForSharing(log: LogEntry[], blockId: ID): LogEntry[] {
   const inBlock = log.filter((e) => e.blockId === blockId);
-  const pinIds = new Set(inBlock.filter((e) => e.type === 'pin' || e.type === 'pin-resolved').map((e) => e.id));
+  const pinIds = new Set(inBlock.filter((e) => e.type === 'pin' || e.type === 'pin-resolved' || e.type === 'message').map((e) => e.id));
   return inBlock.filter((e) => pinIds.has(e.id) || (e.type === 'void' && pinIds.has(e.targetId)));
 }
 

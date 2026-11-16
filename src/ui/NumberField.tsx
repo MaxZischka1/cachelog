@@ -46,7 +46,7 @@ export function NumberField({ label, value, onChange, decimal = false, placehold
           }}
           keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
           placeholder={placeholder}
-          placeholderTextColor={colors.borderLight}
+          placeholderTextColor={colors.placeholder}
           selectTextOnFocus
           autoFocus={autoFocus}
           accessibilityLabel={label}
@@ -69,7 +69,7 @@ export function TextField({ label, style, multiline, ...rest }: TextFieldProps) 
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         style={[styles.input, styles.text, multiline && styles.multiline]}
-        placeholderTextColor={colors.borderLight}
+        placeholderTextColor={colors.placeholder}
         accessibilityLabel={label}
         multiline={multiline}
         {...rest}

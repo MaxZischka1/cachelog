@@ -22,7 +22,7 @@ With a Mac and Xcode, `npx expo run:ios --device` does the same build locally.
 ## Checks
 
 ```
-npm test            # 303 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import
+npm test            # 314 unit tests: plan versioning, merge, diffs, files, pins, tallies, storage, map helpers, import, stats, tracks, messages
 npm run typecheck
 npx expo export --platform ios   # confirms the app bundles
 ```
@@ -33,6 +33,9 @@ Every file ends in `.cachelog`. Tap one that was AirDropped to you and it opens 
 
 - **Plan (boss → crew):** Share plan → AirDrop. Carries the block, the published version, the map images and every crew pin. Older or identical versions are skipped.
 - **Crew updates (anyone → boss):** "Send my updates" carries that phone's bag-ups, pins and piece status. Importing the same file twice is safe.
+- **Tabs:** Today (planter) or Blocks (crew boss) · Map · Messages · Profile. Detail screens push over the tabs.
+- **Messages (crew ↔ crew):** short notes per block, 200 characters max so they fit a LoRa packet later. Saved as log entries; they reach the crew boss with a planter's updates and the crew with the boss's plan share. Long-press your own message to take it back.
+- **Track my shift (planter, opt-in):** background GPS (`src/tracking`, expo-task-manager) into `tracks.db` on the phone. Today shows time, distance and % of the piece covered (path widened to the tree spacing); Profile shows the season. A track goes to the crew boss only if the planter taps *Send today's track*, and shows on the boss's Map tab.
 - **Block map (licensee → boss):** GeoPDF, GeoTIFF, KML or GeoJSON. Use any Import button (pick several at once for a whole contract), or Share → Cachelog from Files or Mail. From a GeoPDF map sheet the app also reads the opening number, plant/opening area and each prescription (species, trees/ha, total trees, boxes, stock, seedlot, start date…) by where the labels and values sit on the page, so it isn't tied to one licensee's form. The map goes on the block with that opening number, else the block it lies over, else the empty block the import was started from, else a new block named by its opening number. It only asks when more than one block could fit. A revised copy of the same map replaces the old one. New pieces default to the sheet's density and species, and planters see them in the morning brief. When the GeoPDF keeps the block outline as its own PDF layer ("Plant Cutblock", "Cutblock", "Treatment Unit", "Block Boundary"…), that outline becomes the block's cutblock: drawn on the map, islands inside it left out of the area (49.98 ha read vs 49.99 ha printed on the test sheet), sent to planters with the plan, and the planter map says when you are outside the block or in an island.
 - **Suggestion (boss/foreman → publishing boss):** Review → "Send as a suggestion instead". The receiver sees the change list and loads it into their draft; nothing is published until they review it.
 

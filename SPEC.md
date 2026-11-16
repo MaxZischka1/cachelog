@@ -60,6 +60,9 @@ Legend: **[v1]** spring pilot with one crew · **[v2]** after the pilot · **[la
 - [v1] Personal day total and season total
 - [v1] Estimated earnings from tree prices
 - [v2] Bag-up timer and pace stats
+- [v1.5] Profile tab: season trees, average and best day, 14-day chart, earnings, species mix (planter); crew totals and per-planter pace (crew boss)
+- [v1.5] Track my shift (opt-in): background GPS recorded on the phone; distance, time on shift, ground covered (path × tree spacing), % of piece covered, trees per hour. Sent to the crew boss only when the planter chooses
+- [v1.5] Messages tab: short crew messages per block (≤ 200 characters, one-tap quick messages), carried in update and plan files until the LoRa radios (RAK4631) carry them
 
 ## 6. Tallies and reconciliation (end of day)
 - [v1] Tally entry per planter / piece / species (crew boss, or collected from planter files)
@@ -82,7 +85,7 @@ Legend: **[v1]** spring pilot with one crew · **[v2]** after the pilot · **[la
 
 ## 9. Platform and distribution
 - [v1] Expo dev build, runs on iPhone via TestFlight
-- [v1] Location permission: when-in-use only for v1 (keeps App Store review simple)
+- [v1] Location permission: when-in-use for the map; "Always" asked only when a planter turns on Track my shift (v1.5). The App Store review note should explain the shift-tracking reason
 - [v1] All data local (SQLite); nothing requires signal in the block
 - [v2] App Store listing / private distribution to contractors
 

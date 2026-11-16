@@ -27,7 +27,7 @@ export function MorningBrief({ block, version, piece, cache }: { block: Block; v
       <Card title="My piece" tone={piece ? 'ok' : 'warning'}>
         {piece ? (
           <>
-            <Text style={styles.huge}>{piece.name}</Text>
+            <InfoRow label="Piece" value={piece.name} />
             <InfoRow label="Area" value={fmtHa(polygonAreaHa(piece.polygon))} />
             {rx?.densityPerHa ? <InfoRow label="Density" value={`${rx.densityPerHa.toLocaleString('en-US')} /ha`} /> : null}
             {rx?.spacingM ? <InfoRow label="Spacing" value={`${rx.spacingM} m`} /> : null}
@@ -43,7 +43,7 @@ export function MorningBrief({ block, version, piece, cache }: { block: Block; v
       <Card title="My cache">
         {cache ? (
           <>
-            <Text style={styles.huge}>{cache.name}</Text>
+            <InfoRow label="Cache" value={cache.name} />
             <Body>{fmtCountsInline(cache.trees)}</Body>
             {cache.notes ? <Muted>{cache.notes}</Muted> : null}
           </>
@@ -79,6 +79,5 @@ export function MorningBrief({ block, version, piece, cache }: { block: Block; v
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.lg },
-  huge: { fontSize: font.huge, fontWeight: '900', color: colors.text },
   hazard: { fontSize: font.large, fontWeight: '700', color: colors.text },
 });

@@ -51,6 +51,7 @@ export const COLORS = {
   vector: '#00B8D4',
   cutblock: '#00E5FF',
   cutblockCasing: '#00363A',
+  track: '#D500F9',
   ghost: '#6B6B6B',
   draft: '#E040FB',
   pinDanger: '#D32F2F',

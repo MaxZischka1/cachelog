@@ -87,3 +87,15 @@ export function sumCounts(lists: SpeciesCount[][]): SpeciesCount[] {
 export function safeFileName(s: string): string {
   return s.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'plan';
 }
+
+/** "2 h 05 min", "12 min". */
+export function fmtDuration(ms: number): string {
+  const min = Math.max(0, Math.round(ms / 60_000));
+  const h = Math.floor(min / 60);
+  return h ? `${h} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
+}
+
+/** "$1,234" from cents, whole dollars. */
+export function fmtDollars(cents: number): string {
+  return `$${Math.round(cents / 100).toLocaleString('en-CA')}`;
+}

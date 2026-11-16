@@ -36,7 +36,7 @@ export function makeLogFile(blockId: ID, deviceId: string, author: string, entri
   };
 }
 
-const TYPES = new Set(['cache-drop', 'bagup', 'tally', 'piece-status', 'void', 'pin', 'pin-resolved']);
+const TYPES = new Set(['cache-drop', 'bagup', 'tally', 'piece-status', 'void', 'pin', 'pin-resolved', 'message', 'track']);
 const PIN_KINDS = new Set(['hazard', 'cache-low', 'need-trees', 'unplantable', 'access', 'done', 'question', 'note']);
 const DAMAGED = "This crew update file is damaged and can't be read. Ask for it to be sent again.";
 
@@ -63,6 +63,20 @@ export function isValidLogEntry(e: unknown, blockId: ID): e is LogEntry {
     if (o.note !== undefined && typeof o.note !== 'string') return false;
   }
   if (o.type === 'pin-resolved' && (typeof o.pinId !== 'string' || !o.pinId)) return false;
+  if (o.type === 'message' && (typeof o.text !== 'string' || !o.text.trim() || o.text.length > 1000)) return false;
+  if (o.type === 'track') {
+    if (typeof o.startedAt !== 'string' || typeof o.endedAt !== 'string') return false;
+    if (typeof o.distanceM !== 'number' || typeof o.coveredHa !== 'number') return false;
+    if (!Array.isArray(o.lines)) return false;
+    let n = 0;
+    for (const line of o.lines as unknown[]) {
+      if (!Array.isArray(line)) return false;
+      for (const p of line as unknown[]) {
+        if (++n > 50_000) return false;
+        if (!Array.isArray(p) || typeof p[0] !== 'number' || typeof p[1] !== 'number' || !(Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)) return false;
+      }
+    }
+  }
   return true;
 }
 

@@ -4,10 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from './theme';
 
 /** Scrollable screen body with padding and keyboard avoidance. The Stack header handles the top inset. */
-export function Screen({ children, scroll = true, style, footer }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle>; footer?: React.ReactNode }) {
+/**
+ * `tab`: the screen sits above the tab bar, which already keeps clear of the home indicator.
+ * `top`: a screen with no header (welcome) keeps clear of the status bar itself.
+ */
+export function Screen({ children, scroll = true, style, footer, tab, top }: { children: React.ReactNode; scroll?: boolean; style?: StyleProp<ViewStyle>; footer?: React.ReactNode; tab?: boolean; top?: boolean }) {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
-      <SafeAreaView style={styles.flex} edges={['bottom', 'left', 'right']}>
+      <SafeAreaView style={styles.flex} edges={[...(top ? (['top'] as const) : []), ...(tab ? [] : (['bottom'] as const)), 'left', 'right']}>
         {scroll ? (
           <ScrollView style={styles.flex} contentContainerStyle={[styles.content, style]} keyboardShouldPersistTaps="handled">
             {children}
