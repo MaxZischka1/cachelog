@@ -102,8 +102,10 @@ describe('helpers', () => {
     expect(layerName('file:///a/b/Block%2042.tif')).toBe('Block 42');
   });
 
+  const ground = { def: '+proj=longlat +datum=WGS84 +no_defs', affine: [1, 0, 0, 0, 1, 0] as [number, number, number, number, number, number] };
+
   test('GeoPDF message includes georeference and conversion hint', () => {
-    const msg = describeGeoPdf({ pages: [{ pageIndex: 0, crs: 'EPSG:26910', corners: [[-123, 52], [-122.9, 52], [-122.9, 51.9], [-123, 51.9]] }] });
+    const msg = describeGeoPdf({ pages: [{ pageIndex: 0, crs: 'EPSG:26910', corners: [[-123, 52], [-122.9, 52], [-122.9, 51.9], [-123, 51.9]], ground }] });
     expect(msg).toMatch(/gdal_translate/);
     expect(msg).toMatch(/GeoTIFF/);
     expect(msg).toMatch(/52\.00000, -123\.00000/);
@@ -122,11 +124,11 @@ describe('helpers', () => {
 
   test('GeoPDF import uses the first map page and warns about the others', () => {
     const corners: [[number, number], [number, number], [number, number], [number, number]] = [[-123, 52], [-122.9, 52], [-122.9, 51.9], [-123, 51.9]];
-    const one = chooseGeoPdfPage({ pages: [{ pageIndex: 2, corners }] });
+    const one = chooseGeoPdfPage({ pages: [{ pageIndex: 2, corners, ground }] });
     expect(one.page.pageIndex).toBe(2);
     expect(one.warnings).toEqual([]);
 
-    const three = chooseGeoPdfPage({ pages: [{ pageIndex: 0, corners }, { pageIndex: 1, corners }, { pageIndex: 3, corners }] });
+    const three = chooseGeoPdfPage({ pages: [{ pageIndex: 0, corners, ground }, { pageIndex: 1, corners, ground }, { pageIndex: 3, corners, ground }] });
     expect(three.page.pageIndex).toBe(0);
     expect(three.warnings).toHaveLength(1);
     expect(three.warnings[0]).toMatch(/3 map pages\. Page 1 was imported; to use page 2, 4 as well, save each/);

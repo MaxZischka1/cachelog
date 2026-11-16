@@ -42,6 +42,15 @@ describe('plan files', () => {
     expect(f.version.content).not.toBe(v.content);
     expect(Date.parse(f.exportedAt)).not.toBeNaN();
   });
+  it('carries the cutblock outline to the crew', () => {
+    const cutblock = {
+      id: 'c', kind: 'vector' as const, name: 'Cutblock', role: 'cutblock' as const, areaHa: 49.98,
+      geojson: { type: 'FeatureCollection' as const, features: [{ type: 'Feature' as const, properties: { role: 'cutblock' }, geometry: { type: 'Polygon' as const, coordinates: [[[-114.67, 56.41], [-114.66, 56.41], [-114.66, 56.42], [-114.67, 56.41]]] } }] },
+    };
+    const f = makePlanFile({ ...sampleBlock(), layers: [cutblock] }, sampleVersion(2));
+    expect(parsePlanFile(serializePlanFile(f)).block.layers).toEqual([cutblock]);
+  });
+
   it('carries the map sheet (opening, prescription) to the crew', () => {
     const sheet = { source: 'BLK_5050853586.pdf', openingNumber: '5050853586', plantAreaHa: 3.29, prescriptions: [{ species: 'SW', treesPerHa: 600, stockType: 'S410A' }] };
     const f = makePlanFile({ ...sampleBlock(), sheet }, sampleVersion(2));

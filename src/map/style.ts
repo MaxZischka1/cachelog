@@ -49,6 +49,8 @@ export const COLORS = {
   hazardAreaFill: '#FF8F00',
   hazardAreaLine: '#D32F2F',
   vector: '#00B8D4',
+  cutblock: '#00E5FF',
+  cutblockCasing: '#00363A',
   ghost: '#6B6B6B',
   draft: '#E040FB',
   pinDanger: '#D32F2F',

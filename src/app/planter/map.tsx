@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { bearingDeg, centroid, compass, distanceM, pointInPolygon } from '../../core/plan';
+import { describeBlockPosition, whereInBlock } from '../../core/cutblock';
 import type { ID } from '../../core/types';
 import { BlockMap, useUserLocation } from '../../map';
 import { fmtDistance, fmtInt } from '../../ui/format';
@@ -34,6 +35,9 @@ export default function PlanterMap() {
   }
 
   const lines: string[] = [];
+  // From the cutblock outline read off the block's map, when there is one.
+  const edge = loc.position ? describeBlockPosition(whereInBlock(loc.position, d.block), loc.accuracyM, fmtDistance) : null;
+  if (edge) lines.push(edge);
   if (loc.position) {
     if (d.piece && d.piece.polygon.length >= 3) {
       lines.push(pointInPolygon(loc.position, d.piece.polygon) ? `You're in ${d.piece.name}` : `${d.piece.name}: ${dir(loc.position, centroid(d.piece.polygon))}`);

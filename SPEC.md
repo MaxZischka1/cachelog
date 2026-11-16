@@ -12,6 +12,7 @@ Legend: **[v1]** spring pilot with one crew · **[v2]** after the pilot · **[la
 - [v1] Import KML / GeoJSON boundaries and pieces
 - [v1] Read GeoPDF georeferencing (LGIDict / Measure+GPTS) so the map can be placed correctly
 - [v2] Render GeoPDF on-device (native PDFKit, `modules/geopdf-render`, iPhone only) — Android/older builds: convert to GeoTIFF on a laptop
+- [v2] Read the cutblock outline (with islands) from the GeoPDF's vector layer; show it, give its area, tell planters when they are outside the block
 - [v2] Shapefile import
 - [v1] Offline basemap region download for the block area
 - [v1] Show own GPS position, heading, accuracy

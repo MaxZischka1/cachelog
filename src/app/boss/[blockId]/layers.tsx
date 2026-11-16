@@ -9,6 +9,7 @@ import { confirm, showError } from '../../../ui/alerts';
 import { Button } from '../../../ui/Button';
 import { Card } from '../../../ui/Card';
 import { pickFile } from '../../../ui/files';
+import { describeCutblock } from '../../../core/cutblock';
 import { applyMapToBlock, offerPieces } from '../../../ui/mapImport';
 import { fmtHa } from '../../../ui/format';
 import { Screen } from '../../../ui/Screen';
@@ -108,7 +109,13 @@ export default function LayersScreen() {
         {block.layers.length === 0 ? <EmptyState title="No layers yet" message="Import the block map from the licensee or contractor." /> : null}
         {block.layers.map((l) => (
           <Card key={l.id} title={l.name}>
-            <Muted>{l.kind === 'raster' ? 'Map image (raster)' : `Vector · ${l.geojson.features.length} features`}</Muted>
+            <Muted>
+              {l.kind === 'raster'
+                ? 'Map image (raster)'
+                : l.role === 'cutblock'
+                  ? `Block outline read from the map · ${describeCutblock(l) ?? ''}`
+                  : `Vector · ${l.geojson.features.length} features`}
+            </Muted>
             <Button title="Remove" variant="ghost" size="small" onPress={() => removeLayer(l.id, l.name)} />
           </Card>
         ))}

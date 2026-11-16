@@ -51,6 +51,13 @@ export interface VectorLayer {
   name: string;
   /** GeoJSON FeatureCollection, stored as-is. */
   geojson: GeoJSONFeatureCollection;
+  /**
+   * 'cutblock': the block boundary read from a GeoPDF's cutblock layer. Polygons whose holes are
+   * islands that are not planted. A block has at most one.
+   */
+  role?: 'cutblock';
+  /** Cutblock only: net area in hectares, islands taken out. */
+  areaHa?: number;
 }
 
 export type MapLayer = RasterLayer | VectorLayer;

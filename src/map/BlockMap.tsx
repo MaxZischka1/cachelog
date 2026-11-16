@@ -209,7 +209,23 @@ export function BlockMap(props: BlockMapProps): JSX.Element {
 
           {/* Imported vector reference data (boundary, roads, streams) */}
           {block.layers.map((l) =>
-            l.kind === 'vector' ? (
+            l.kind === 'vector' && l.role === 'cutblock' ? (
+              // The block outline: a bold line with a dark casing so it reads on imagery; islands too.
+              <GeoJSONSource key={l.id} id={`cl-vector-src-${l.id}`} data={l.geojson as any}>
+                <Layer
+                  id={`cl-cutblock-casing-${l.id}`}
+                  type="line"
+                  paint={{ 'line-color': COLORS.cutblockCasing, 'line-width': 5, 'line-opacity': 0.6 }}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                />
+                <Layer
+                  id={`cl-cutblock-line-${l.id}`}
+                  type="line"
+                  paint={{ 'line-color': COLORS.cutblock, 'line-width': 2.5 }}
+                  layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                />
+              </GeoJSONSource>
+            ) : l.kind === 'vector' ? (
               <GeoJSONSource key={l.id} id={`cl-vector-src-${l.id}`} data={l.geojson as any}>
                 <Layer
                   id={`cl-vector-fill-${l.id}`}

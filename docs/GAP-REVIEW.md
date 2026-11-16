@@ -41,6 +41,6 @@ All three file types end in `.cachelog` and the app registers that type with iOS
 
 ## Suggested order from here
 1. Build on the Mac and run it on an iPhone; fix what breaks (map, file opening).
-2. ~~GeoPDF rendering module (Swift/PDFKit).~~ Built; test it with a real block GeoPDF.
+2. ~~GeoPDF rendering module (Swift/PDFKit).~~ Built; test it with a real block GeoPDF. The cutblock outline is also read from the PDF's vector layer (`src/import/pdfPaths.ts`, `src/import/cutblock.ts`).
 3. Pilot-crew interviews: is tally reconciliation the money problem, and do bosses actually co-plan?
 4. Phone-to-phone sync at camp (Multipeer Connectivity) so nobody passes files.

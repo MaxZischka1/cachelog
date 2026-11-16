@@ -4,9 +4,10 @@
  */
 import { Directory, File, Paths } from 'expo-file-system';
 import { GeoPdfRender } from '../../modules/geopdf-render';
-import type { RasterLayer } from '../core/types';
+import type { RasterLayer, VectorLayer } from '../core/types';
 import { geotiffToRaster, MAX_RASTER_SIDE } from './geotiff';
-import { readGeoPdfGeoreference } from './geopdf';
+import { cutblockFromPdf, cutblockLayer } from './cutblock';
+import { georeferenceOf, loadPdf } from './geopdf';
 import { kmlToGeoJSON, normalizeGeoJSON } from './vector';
 import { newImportId } from './ids';
 import type { ImportResult } from './types';
@@ -67,8 +68,10 @@ export async function importMapFile(uri: string, name: string): Promise<ImportRe
       return vectorResult(title, normalizeGeoJSON(parsed));
     }
     case 'pdf': {
-      // Georeference is read in JS (pdf-lib); the page image comes from the native PDFKit renderer.
-      const info = await readGeoPdfGeoreference(await readBytes(uri));
+      // Georeference and vector layers are read in JS (pdf-lib); the page image comes from the
+      // native PDFKit renderer.
+      const doc = await loadPdf(await readBytes(uri));
+      const info = georeferenceOf(doc);
       if (!info) throw new Error(describeGeoPdf(null));
       if (!GeoPdfRender) throw new Error(describeGeoPdf(info));
       const { page, warnings } = chooseGeoPdfPage(info);
@@ -91,7 +94,15 @@ export async function importMapFile(uri: string, name: string): Promise<ImportRe
       } catch {
         sheet = undefined;
       }
-      return { kind: 'raster', layer, warnings, sheet };
+      // The block outline, when the map keeps it as its own layer ("Plant Cutblock"). Optional too.
+      let cutblock: VectorLayer | undefined;
+      try {
+        const b = cutblockFromPdf(doc, page);
+        if (b) cutblock = cutblockLayer(b);
+      } catch {
+        cutblock = undefined;
+      }
+      return { kind: 'raster', layer, warnings, sheet, cutblock };
     }
     case 'kmz':
       throw new Error('KMZ (zipped KML) is not supported yet. Unzip it and import the doc.kml inside, or save it as KML from Google Earth.');

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import type { BlockSheet } from '../core/types';
+import { describeCutblock } from '../core/cutblock';
+import type { BlockSheet, VectorLayer } from '../core/types';
 import { describePrescription } from '../import/pdfSheet';
 import { Card } from './Card';
 import { InfoRow, Muted } from './Section';
@@ -8,13 +9,23 @@ import { colors, font } from './theme';
 
 const ha = (v: number) => `${v.toLocaleString('en-CA', { maximumFractionDigits: 2 })} ha`;
 
-/** What was read off the block's map sheet: opening, areas and each prescription. */
-export function SheetCard({ sheet }: { sheet: BlockSheet }) {
+/** What was read off the block's map: opening, areas, the cutblock outline and each prescription. */
+export function SheetCard({ sheet, cutblock }: { sheet?: BlockSheet; cutblock?: VectorLayer }) {
+  const outline = describeCutblock(cutblock);
+  if (!sheet) {
+    return (
+      <Card title="From the map">
+        {outline ? <InfoRow label="Cutblock" value={outline} /> : null}
+        <Muted>Block outline read from the map. Check it against the paper copy.</Muted>
+      </Card>
+    );
+  }
   return (
     <Card title="From the map sheet">
       {sheet.openingNumber ? <InfoRow label="Opening" value={sheet.openingNumber} /> : null}
       {sheet.plantAreaHa !== undefined ? <InfoRow label="Plant area" value={ha(sheet.plantAreaHa)} /> : null}
       {sheet.openingAreaHa !== undefined ? <InfoRow label="Opening area" value={ha(sheet.openingAreaHa)} /> : null}
+      {outline ? <InfoRow label="Cutblock (mapped)" value={outline} /> : null}
       {sheet.operatingArea ? <InfoRow label="Operating area" value={sheet.operatingArea} /> : null}
       {sheet.prescriptions.map((rx, i) => (
         <React.Fragment key={i}>

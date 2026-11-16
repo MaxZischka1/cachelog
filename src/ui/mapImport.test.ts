@@ -158,3 +158,28 @@ test('batch summary lists each block and what failed', async () => {
   expect(text).toMatch(/• 5050853586: new block · SW · 600\/ha/);
   expect(text).toMatch(/Not imported:\n• scan.pdf: This PDF has no georeferencing/);
 });
+
+test('the cutblock outline goes on the block, and a revised map replaces it', async () => {
+  const store = new MemoryStore();
+  const outline = (id: string, areaHa: number): VectorLayer => ({
+    id, kind: 'vector', name: 'Cutblock', role: 'cutblock', areaHa,
+    geojson: {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: { role: 'cutblock' }, geometry: { type: 'Polygon', coordinates: [
+        [[-114.67, 56.415], [-114.66, 56.415], [-114.66, 56.42], [-114.67, 56.42], [-114.67, 56.415]],
+        [[-114.666, 56.417], [-114.665, 56.417], [-114.665, 56.418], [-114.666, 56.418], [-114.666, 56.417]],
+      ] } }],
+    },
+  });
+  importMapFile.mockResolvedValueOnce({ ...withSheet(raster()), cutblock: outline('c1', 49.98) } as ImportResult);
+  const first = await importMapAnywhere(store, file);
+  expect(first!.block.layers.map((l) => l.id)).toEqual(['r1', 'c1']);
+  expect(describeMapImport(first!)).toMatch(/Block outline read from the map: 49\.98 ha, 1 island \(0\.\d+ ha\) left out/);
+  expect(describeMapBatch([first!], [])).toMatch(/cutblock 49\.98 ha/);
+
+  // A revised map under another file name: the old outline goes, the old image stays.
+  importMapFile.mockResolvedValueOnce({ ...withSheet(raster('BLK_5050853586_rev2', 'r2')), cutblock: outline('c2', 48.1) } as ImportResult);
+  const second = await importMapAnywhere(store, { uri: 'file:///Inbox/BLK_5050853586_rev2.pdf', name: 'BLK_5050853586_rev2.pdf' });
+  expect(second!.block.id).toBe(first!.block.id);
+  expect((await store.getBlock(first!.block.id))!.layers.map((l) => l.id)).toEqual(['r1', 'r2', 'c2']);
+});

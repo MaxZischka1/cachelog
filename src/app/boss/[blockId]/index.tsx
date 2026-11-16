@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { cutblockOf } from '../../../core/cutblock';
 import { today } from '../../../core/plan';
 import { Button } from '../../../ui/Button';
 import { Card } from '../../../ui/Card';
@@ -47,7 +48,7 @@ export default function BlockHome() {
         {staleDay ? <Text style={styles.status}>The published plan is for {fmtDay(latest.content.day)}. Tap Plan to start today’s.</Text> : null}
       </Card>
 
-      {block.sheet ? <SheetCard sheet={block.sheet} /> : null}
+      {block.sheet || cutblockOf(block) ? <SheetCard sheet={block.sheet} cutblock={cutblockOf(block)} /> : null}
 
       <Section title="1 · Plan">
         <View style={styles.grid}>

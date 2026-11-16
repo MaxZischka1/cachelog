@@ -4,6 +4,7 @@
  * Without a block given, it works out which block the map belongs to (see chooseMapBlock).
  */
 import { File } from 'expo-file-system';
+import { describeCutblock } from '../core/cutblock';
 import { newId, nowIso, startDraft, today, updateDraft } from '../core/plan';
 import type { Store } from '../core/store';
 import type { Block, ID, MapLayer, Piece } from '../core/types';
@@ -65,11 +66,12 @@ function deleteImage(layer: MapLayer) {
 /**
  * Put an imported map on a block. A layer with the same name (a revised copy of the same map
  * file) is replaced in place rather than stacked; its old image is deleted. The sheet read from
- * the map (opening number, prescription) is stored on the block.
+ * the map (opening number, prescription) is stored on the block, and the cutblock outline drawn
+ * on it replaces the block's earlier one (a block has one boundary).
  */
 export function applyMapToBlock(block: Block, result: ImportResult): { block: Block; replaced: boolean } {
   const same = block.layers.findIndex((l) => l.kind === result.layer.kind && l.name === result.layer.name);
-  const layers = [...block.layers];
+  let layers = [...block.layers];
   if (same >= 0) {
     deleteImage(layers[same]);
     layers[same] = result.layer;
@@ -78,6 +80,12 @@ export function applyMapToBlock(block: Block, result: ImportResult): { block: Bl
   }
   const next: Block = { ...block, layers };
   if (result.kind === 'raster' && result.sheet) next.sheet = result.sheet;
+  if (result.kind === 'raster' && result.cutblock) {
+    layers = layers.filter((l) => !(l.kind === 'vector' && l.role === 'cutblock'));
+    // Drawn above the map image, below anything imported later.
+    layers.splice(layers.indexOf(result.layer) + 1, 0, result.cutblock);
+    next.layers = layers;
+  }
   return { block: next, replaced: same >= 0 };
 }
 
@@ -129,7 +137,8 @@ export function describeMapBatch(outcomes: MapImportOutcome[], failed: { name: s
     const sheet = o.result.kind === 'raster' ? o.result.sheet : undefined;
     const rx = sheet?.prescriptions.map(describePrescription).filter(Boolean).join('; ');
     const what = o.created ? 'new block' : o.replaced ? 'map updated' : 'map added';
-    return `• ${o.block.name}: ${what}${rx ? ` · ${rx}` : ''}`;
+    const cut = o.result.kind === 'raster' ? describeCutblock(o.result.cutblock) : null;
+    return `• ${o.block.name}: ${what}${cut ? ` · cutblock ${cut}` : ''}${rx ? ` · ${rx}` : ''}`;
   });
   if (failed.length) lines.push('', 'Not imported:', ...failed.map((f) => `• ${f.name}: ${f.reason}`));
   const warnings = outcomes.flatMap((o) => o.result.warnings.map((w) => `${o.result.layer.name}: ${w}`));
@@ -153,6 +162,8 @@ export function describeMapImport(o: MapImportOutcome): string {
     const rx = sheet.prescriptions.map(describePrescription).filter(Boolean);
     if (area || rx.length) lines.push(`From the map sheet: ${area}${rx.join('; ')}`.trim());
   }
+  const cut = o.result.kind === 'raster' ? describeCutblock(o.result.cutblock) : null;
+  if (cut) lines.push(`Block outline read from the map: ${cut}. It's on the map, and planters see when they leave the block.`);
   if (o.piecesAdded !== undefined) lines.push(`${o.piecesAdded} piece${o.piecesAdded === 1 ? '' : 's'} added to the draft plan.`);
   lines.push(...o.result.warnings);
   return lines.join('\n\n');
