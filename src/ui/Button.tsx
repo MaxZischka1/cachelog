@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, font, radius, spacing, touch } from './theme';
+import { colors, font, radii, spacing, touch } from './theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
@@ -50,17 +50,17 @@ export function Button({ title, onPress, variant = 'primary', size = 'normal', d
 
 const variants: Record<ButtonVariant, { bg: string; text: string; border: string }> = {
   primary: { bg: colors.primary, text: colors.primaryText, border: colors.primary },
-  secondary: { bg: colors.secondary, text: colors.secondaryText, border: colors.border },
+  secondary: { bg: colors.secondary, text: colors.secondaryText, border: colors.secondary },
   danger: { bg: colors.danger, text: colors.dangerText, border: colors.danger },
-  ghost: { bg: 'transparent', text: colors.text, border: colors.borderLight },
+  ghost: { bg: 'transparent', text: colors.primary, border: 'transparent' },
 };
 
 const styles = StyleSheet.create({
   base: {
     minHeight: touch.min,
-    borderRadius: radius,
-    borderWidth: 2,
-    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     justifyContent: 'center',
   },
@@ -68,10 +68,10 @@ const styles = StyleSheet.create({
   small: { minHeight: 48, paddingHorizontal: spacing.md },
   inner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   texts: { alignItems: 'center', flexShrink: 1 },
-  title: { fontSize: font.large, fontWeight: '700', textAlign: 'center' },
-  titleBig: { fontSize: font.large + 2 },
-  titleSmall: { fontSize: font.body },
+  title: { fontSize: font.body + 1, fontWeight: '700', textAlign: 'center' },
+  titleBig: { fontSize: font.large },
+  titleSmall: { fontSize: font.small + 1, fontWeight: '600' },
   subtitle: { fontSize: font.small, marginTop: 2, textAlign: 'center' },
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   disabled: { opacity: 0.4 },
 });

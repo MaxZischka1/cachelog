@@ -47,7 +47,7 @@ export function SpeciesCountsEditor({ value, onChange, speciesOptions = [], quic
               value={row.species}
               onChangeText={(t) => setRow(i, { species: t })}
               placeholder="Sp"
-              placeholderTextColor={colors.borderLight}
+              placeholderTextColor={colors.textFaint}
               autoCapitalize="words"
               autoCorrect={false}
               maxLength={6}
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   species: {
     width: 84,
     minHeight: touch.min,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius,
     paddingHorizontal: spacing.sm,
@@ -112,10 +112,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
   },
   count: { flex: 1 },
-  remove: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius, borderWidth: 2, borderColor: colors.danger },
+  remove: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', borderRadius: radius, borderWidth: 1, borderColor: colors.danger },
   removeText: { fontSize: font.large, color: colors.danger, fontWeight: '800' },
   quickRow: { flexDirection: 'row', gap: spacing.sm },
   quick: {
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   },
   quickText: { color: colors.primaryText, fontSize: font.large, fontWeight: '800' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { minHeight: 48, minWidth: 64, paddingHorizontal: spacing.md, borderRadius: 24, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  chip: { minHeight: 48, minWidth: 64, paddingHorizontal: spacing.md, borderRadius: 24, borderWidth: 1, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: font.body, fontWeight: '700', color: colors.primary },
   total: { fontSize: font.large, fontWeight: '800', color: colors.text, textAlign: 'right' },
   pressed: { opacity: 0.6 },

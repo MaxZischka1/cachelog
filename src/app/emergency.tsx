@@ -63,7 +63,7 @@ function Item({ label, value, huge }: { label: string; value: string; huge?: boo
 }
 
 const styles = StyleSheet.create({
-  item: { borderWidth: 3, borderColor: colors.danger, borderRadius: radius, padding: spacing.lg, gap: spacing.xs },
+  item: { borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius, padding: spacing.lg, gap: spacing.xs },
   label: { fontSize: font.body, fontWeight: '700', color: colors.danger, textTransform: 'uppercase' },
   value: { fontSize: font.large, fontWeight: '800', color: colors.text },
   huge: { fontSize: font.huge },

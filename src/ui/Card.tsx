@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, font, radius, spacing } from './theme';
+import { colors, font, radii, spacing } from './theme';
 
 export interface CardProps {
   title?: string;
@@ -31,15 +31,15 @@ export function Card({ title, children, onPress, tone = 'normal', style }: CardP
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius,
+    borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.surface,
     padding: spacing.lg,
     gap: spacing.sm,
   },
-  warning: { backgroundColor: colors.warningBg, borderColor: colors.warning, borderWidth: 2 },
+  warning: { backgroundColor: colors.warningBg, borderColor: colors.warning, borderWidth: 1 },
   ok: { backgroundColor: colors.okBg, borderColor: colors.ok },
-  danger: { backgroundColor: '#FDECEA', borderColor: colors.danger, borderWidth: 2 },
-  title: { fontSize: font.large, fontWeight: '700', color: colors.text },
+  danger: { backgroundColor: colors.dangerBg, borderColor: colors.danger, borderWidth: 1 },
+  title: { fontSize: font.small, fontWeight: '600', color: colors.textMuted },
   pressed: { opacity: 0.7 },
 });

@@ -54,10 +54,11 @@ export default function BossHome() {
           </Card>
         ))}
       </Section>
-      <Button title="+ New block" size="big" variant="secondary" onPress={() => router.push('/boss/block-form')} />
+      <Button title="New block from a PDF map" subtitle="Licensee GeoPDF or Avenza map: outline and pieces read automatically" size="big" busy={flow.busy} onPress={flow.pick} />
+      <Button title="+ New block (blank)" variant="secondary" onPress={() => router.push('/boss/block-form')} />
       <Button
         title="Import a file"
-        subtitle="A plan from another crew boss, crew updates, or a suggestion"
+        subtitle="A plan from another crew boss, crew updates, a suggestion, or a map"
         variant="secondary"
         busy={flow.busy}
         onPress={flow.pick}

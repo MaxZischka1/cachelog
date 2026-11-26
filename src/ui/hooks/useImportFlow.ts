@@ -4,10 +4,11 @@ import { Alert } from 'react-native';
 import { decideImport, diffPlans, mergePlans, parsePlanFile, parseSuggestion, rebaseDraft, sniffFile, startDraft } from '../../core/plan';
 import { parseLogFile } from '../../core/tally';
 import type { Draft } from '../../core/types';
-import { confirm, showError } from '../alerts';
+import { choose, confirm, showError } from '../alerts';
 import { pickFile, readTextFile } from '../files';
 import { fmtDateTime } from '../format';
 import { extractImages } from '../planFileImages';
+import { importMapIntoBlock, isMapFileName } from '../mapImport';
 import { useBump, useStore } from '../store';
 
 /**
@@ -121,7 +122,7 @@ export function useImportFlow() {
         return;
       }
 
-      Alert.alert("Not a Cachelog file", 'Pick a plan, crew update or suggestion file sent from Cachelog. To add a block map, use Map layers.');
+      Alert.alert('Not a Cachelog file', 'Pick a plan, crew update or suggestion file sent from Cachelog, or a block map (PDF, GeoTIFF, KML).');
     },
     [store, bump],
   );
@@ -141,18 +142,82 @@ export function useImportFlow() {
     [handleText],
   );
 
-  /** Choose a file with the document picker. */
-  const pick = useCallback(
-    () =>
-      run(async () => {
-        const picked = await pickFile();
-        return picked ? readTextFile(picked.uri) : null;
-      }),
-    [run],
+  /**
+   * A map (GeoPDF, GeoTIFF, KML...) rather than a Cachelog file. Crew boss: start a new block from
+   * it or add it to one. Planters get block maps inside the boss's plan file.
+   */
+  const handleMap = useCallback(
+    async (uri: string, name: string) => {
+      const settings = await store.getSettings();
+      if (settings?.role !== 'crew-boss') {
+        Alert.alert(
+          'Block maps come from the crew boss',
+          "The crew boss imports the block's PDF map and shares the plan; the map comes with it. Ask them to share today's plan file.",
+        );
+        return;
+      }
+      const blocks = await store.listBlocks();
+      const active = blocks.find((b) => b.id === settings.activeBlockId);
+      const others = blocks.filter((b) => b.id !== active?.id).slice(-3).reverse();
+      const options = [
+        { label: 'New block from this map', value: '__new__' },
+        ...(active ? [{ label: `Add to ${active.name}`, value: active.id }] : []),
+        ...others.map((b) => ({ label: `Add to ${b.name}`, value: b.id })),
+      ];
+      const choice = blocks.length ? await choose('Add this map', name, options) : '__new__';
+      if (!choice) return;
+      const target = choice === '__new__' ? null : (blocks.find((b) => b.id === choice) ?? null);
+      const out = await importMapIntoBlock(store, target, uri, name);
+      await store.saveSettings({ ...settings, activeBlockId: out.block.id });
+      bump();
+      const warn = out.result.warnings.length ? `\n\n${out.result.warnings.join('\n')}` : '';
+      const pieces = out.piecesAdded ? ` ${out.piecesAdded} piece${out.piecesAdded === 1 ? '' : 's'} added to the draft.` : '';
+      Alert.alert(target ? 'Map added' : `${out.block.name} created`, `The map is on the block.${pieces} Open Plan to drop caches.${warn}`);
+      router.dismissTo('/boss');
+      router.push(`/boss/${out.block.id}`);
+    },
+    [store, bump],
   );
 
+  /** Choose a file with the document picker. */
+  const pick = useCallback(async () => {
+    const picked = await pickFile().catch((e) => {
+      showError('Could not open the file picker', e);
+      return null;
+    });
+    if (!picked) return;
+    if (isMapFileName(picked.name) || isMapFileName(picked.uri)) {
+      setBusy(true);
+      try {
+        await handleMap(picked.uri, picked.name);
+      } catch (e) {
+        showError(`Could not import ${picked.name}`, e);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    await run(() => readTextFile(picked.uri));
+  }, [run, handleMap]);
+
   /** Open a file the system handed to the app (AirDrop, Files, Mail). */
-  const open = useCallback((uri: string) => run(() => readTextFile(uri)), [run]);
+  const open = useCallback(
+    async (uri: string) => {
+      if (isMapFileName(uri)) {
+        setBusy(true);
+        try {
+          await handleMap(uri, decodeURIComponent(uri.split('/').pop() ?? 'map'));
+        } catch (e) {
+          showError('Could not import the map', e);
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
+      await run(() => readTextFile(uri));
+    },
+    [run, handleMap],
+  );
 
   return { busy, pick, open };
 }

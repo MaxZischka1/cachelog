@@ -22,6 +22,8 @@ export type MapMode =
   | { kind: 'view' }
   | { kind: 'place-point'; onPlace: (p: LngLat) => void }
   | { kind: 'draw-polygon'; onDone: (ring: LngLat[]) => void; onCancel: () => void }
+  /** Drag a finger around an area (lasso). Two fingers still pan and zoom. */
+  | { kind: 'draw-freehand'; onDone: (ring: LngLat[]) => void; onCancel: () => void }
   | { kind: 'move-point'; id: ID; onMove: (p: LngLat) => void };
 
 export interface BlockMapProps {
@@ -59,7 +61,12 @@ const labelLayout = (size: number): NonNullable<SymbolLayerSpecification['layout
 });
 const labelPaint = { 'text-color': COLORS.labelText, 'text-halo-color': COLORS.labelHalo, 'text-halo-width': 2 } as const;
 
-export function BlockMap(props: BlockMapProps): JSX.Element {
+export function BlockMap(rawProps: BlockMapProps): JSX.Element {
+  // MapLibre view: a lasso falls back to tapping corners.
+  const props: BlockMapProps =
+    rawProps.mode?.kind === 'draw-freehand'
+      ? { ...rawProps, mode: { kind: 'draw-polygon', onDone: rawProps.mode.onDone, onCancel: rawProps.mode.onCancel } }
+      : rawProps;
   const {
     block,
     plan,

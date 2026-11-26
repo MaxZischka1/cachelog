@@ -1,16 +1,16 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { polygonAreaHa, startDraft, today, updateDraft } from '../../../core/plan';
-import type { Block, Piece } from '../../../core/types';
-import { importMapFile, type ImportResult } from '../../../import';
+import { polygonAreaHa } from '../../../core/plan';
+import type { Block } from '../../../core/types';
+import { type ImportResult } from '../../../import';
+import { importMapIntoBlock } from '../../../ui/mapImport';
 import { downloadOfflineRegion } from '../../../map';
 import { confirm, showError } from '../../../ui/alerts';
 import { Button } from '../../../ui/Button';
 import { Card } from '../../../ui/Card';
 import { pickFile } from '../../../ui/files';
 import { fmtHa } from '../../../ui/format';
-import { addPieces } from '../../../ui/planEdits';
 import { Screen } from '../../../ui/Screen';
 import { Body, EmptyState, Flag, Muted, Section } from '../../../ui/Section';
 import { useBlock, useBump, useLatestVersion, useStore } from '../../../ui/store';
@@ -34,15 +34,6 @@ export default function LayersScreen() {
     bump();
   };
 
-  const addPiecesToDraft = async (pieces: Piece[]) => {
-    const existing = (await store.getDraft(blockId)) ?? startDraft(blockId, await store.getLatestVersion(blockId), today());
-    const names = new Set(existing.content.pieces.map((p) => p.name.toLowerCase()));
-    const fresh = pieces.filter((p) => !names.has(p.name.toLowerCase()));
-    await store.saveDraft(updateDraft(existing, addPieces(fresh)));
-    bump();
-    return fresh.length;
-  };
-
   const doImport = async () => {
     const picked = await pickFile().catch((e) => {
       showError('Could not open the file picker', e);
@@ -51,18 +42,9 @@ export default function LayersScreen() {
     if (!picked) return;
     setBusy(true);
     try {
-      const result = await importMapFile(picked.uri, picked.name);
-      await saveBlock({ ...block, layers: [...block.layers, result.layer] });
-      let piecesAdded: number | undefined;
-      if (result.kind === 'vector' && result.pieces.length > 0) {
-        const yes = await confirm(
-          `${result.pieces.length} polygon${result.pieces.length === 1 ? '' : 's'} found`,
-          'Add them as pieces to the draft plan? Pieces with a name already in the draft are skipped. You can review before publishing.',
-          'Add pieces',
-        );
-        if (yes) piecesAdded = await addPiecesToDraft(result.pieces);
-      }
-      setLast({ name: picked.name, result, piecesAdded });
+      const out = await importMapIntoBlock(store, block, picked.uri, picked.name);
+      bump();
+      setLast({ name: picked.name, result: out.result, piecesAdded: out.piecesAdded });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setLast({ name: picked.name, error: msg });
@@ -101,7 +83,23 @@ export default function LayersScreen() {
       {last ? (
         <Card title={`Last import: ${last.name}`} tone={last.error ? 'danger' : last.result?.warnings.length ? 'warning' : 'ok'}>
           {last.error ? <Body>{last.error}</Body> : null}
-          {last.result ? <Body>Added {last.result.kind === 'raster' ? 'map image' : 'vector layer'} “{last.result.layer.name}”.</Body> : null}
+          {last.result ? (
+            <Body>
+              Added {last.result.kind === 'vector' ? 'vector layer' : 'map image'} “{last.result.layer.name}”
+              {last.result.kind === 'geopdf' && last.result.outline ? ' and the block outline' : ''}.
+            </Body>
+          ) : null}
+          {last.result?.kind === 'geopdf' && last.result.candidates.length ? (
+            <View>
+              <Muted>Shapes found in the PDF layers:</Muted>
+              {last.result.candidates.slice(0, 6).map((c) => (
+                <Muted key={c.name}>
+                  {c.name} · {c.polygons} shape{c.polygons === 1 ? '' : 's'} · {fmtHa(c.areaHa)}
+                </Muted>
+              ))}
+            </View>
+          ) : null}
+          {last.result?.kind === 'geopdf' && last.piecesAdded !== undefined ? <Body>{last.piecesAdded} added to the draft as pieces.</Body> : null}
           {last.result?.kind === 'vector' ? (
             <Body>
               {last.result.pieces.length} polygon{last.result.pieces.length === 1 ? '' : 's'} found
@@ -135,7 +133,7 @@ export default function LayersScreen() {
         <Body>Download the basemap around this block while you still have signal.</Body>
         <Button title={progress !== null ? `Downloading… ${Math.round(progress)}%` : 'Download for offline'} variant="secondary" busy={progress !== null} onPress={doOffline} />
       </Section>
-      <Text style={styles.hint}>GeoPDF that can’t be drawn on the phone yet: convert it to GeoTIFF on a laptop and import that.</Text>
+      <Text style={styles.hint}>GeoPDFs (Avenza, ArcGIS, licensee maps) are drawn on the phone and their block shapes are read from the PDF layers.</Text>
     </Screen>
   );
 }

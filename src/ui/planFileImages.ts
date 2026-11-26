@@ -38,7 +38,8 @@ export async function extractImages(file: PlanFile): Promise<{ block: Block; dro
       dropped.push(layer.name);
       continue;
     }
-    const out = new File(dir, `${file.block.id}-${layer.id}.png`);
+    const ext = /\.jpe?g$/i.test(layer.imageUri) ? 'jpg' : 'png';
+    const out = new File(dir, `${file.block.id}-${layer.id}.${ext}`);
     if (out.exists) out.delete();
     out.create();
     await out.write(data, { encoding: 'base64' });

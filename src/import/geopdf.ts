@@ -72,7 +72,7 @@ function asDict(v: Js | undefined): { [k: string]: Js } | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
 }
 
-type Box = { x: number; y: number; width: number; height: number };
+export type Box = { x: number; y: number; width: number; height: number };
 
 /** Page corners in user space, TL TR BR BL as displayed (honouring /Rotate). */
 function pageCorners(box: Box, rotation: number): [number, number][] {
@@ -91,7 +91,10 @@ function finiteCorners(ll: LngLat[]): ll is [LngLat, LngLat, LngLat, LngLat] {
  * Fit an affine page -> local UTM using control points given in WGS84, then map the page corners.
  * Fitting in a planar frame keeps it exact for maps drawn in any projected CRS at block scale.
  */
-function cornersFromControl(pagePts: [number, number][], lngLats: LngLat[], corners: [number, number][]): LngLat[] | null {
+/** Page user space (points) -> WGS84 lon/lat. */
+export type PageToLngLat = (p: [number, number]) => LngLat;
+
+function transformFromControl(pagePts: [number, number][], lngLats: LngLat[]): PageToLngLat | null {
   if (pagePts.length < 3) return null;
   const c: LngLat = [
     lngLats.reduce((s, p) => s + p[0], 0) / lngLats.length,
@@ -101,7 +104,15 @@ function cornersFromControl(pagePts: [number, number][], lngLats: LngLat[], corn
   const dst = lngLats.map((p) => fromWgs84(frame, p));
   const t = fitAffine(pagePts, dst);
   if (!t) return null;
-  return corners.map((p) => toWgs84(frame, applyAffine(t, p)));
+  return (p) => toWgs84(frame, applyAffine(t, p));
+}
+
+/** Map frame found on a page: its box in page space and how to turn page points into lon/lat. */
+interface FrameHit {
+  bbox: [number, number, number, number];
+  toLngLat: PageToLngLat;
+  corners: LngLat[];
+  crs?: string;
 }
 
 function crsName(gcs: { [k: string]: Js } | null): string | undefined {
@@ -122,9 +133,9 @@ function crsName(gcs: { [k: string]: Js } | null): string | undefined {
 
 // ---------------------------------------------------------------- ISO 32000 /VP /Measure /GEO
 
-function fromViewports(vps: Js, corners: [number, number][]): { corners: LngLat[]; crs?: string } | null {
+function fromViewports(vps: Js, corners: [number, number][]): FrameHit | null {
   const list = Array.isArray(vps) ? vps : asDict(vps) ? [vps] : [];
-  let best: { corners: LngLat[]; crs?: string; area: number } | null = null;
+  let best: (FrameHit & { area: number }) | null = null;
   for (const raw of list) {
     const vp = asDict(raw);
     if (!vp) continue;
@@ -153,12 +164,14 @@ function fromViewports(vps: Js, corners: [number, number][]): { corners: LngLat[
       const a = gpts[2 * i], b = gpts[2 * i + 1];
       lls.push(swapped ? [a, b] : [b, a]);
     }
-    const ll = cornersFromControl(pagePts, lls, corners);
-    if (!ll || !finiteCorners(ll)) continue;
+    const toLngLat = transformFromControl(pagePts, lls);
+    if (!toLngLat) continue;
+    const ll = corners.map(toLngLat);
+    if (!finiteCorners(ll)) continue;
     const area = (x2 - x1) * (y2 - y1);
-    if (!best || area > best.area) best = { corners: ll, crs: crsName(asDict(measure.GCS)), area };
+    if (!best || area > best.area) best = { bbox: [x1, y1, x2, y2], toLngLat, corners: ll, crs: crsName(asDict(measure.GCS)), area };
   }
-  return best ? { corners: best.corners, crs: best.crs } : null;
+  return best ? { bbox: best.bbox, toLngLat: best.toLngLat, corners: best.corners, crs: best.crs } : null;
 }
 
 // ---------------------------------------------------------------- TerraGo LGIDict
@@ -197,7 +210,7 @@ function lgiProjection(p: { [k: string]: Js } | null): { def: string | null; lab
   }
 }
 
-function fromLgiDict(raw: Js, corners: [number, number][]): { corners: LngLat[]; crs?: string } | null {
+function fromLgiDict(raw: Js, corners: [number, number][], box: Box): FrameHit | null {
   const list = Array.isArray(raw) ? raw : [raw];
   for (const item of list) {
     const d = asDict(item);
@@ -216,20 +229,34 @@ function fromLgiDict(raw: Js, corners: [number, number][]): { corners: LngLat[];
       if (ctm.length === 6) t = [ctm[0], ctm[2], ctm[4], ctm[1], ctm[3], ctm[5]];
     }
     if (!t) continue;
-    let model = corners.map((p) => applyAffine(t!, p));
+    const affine = t;
     // Some geographic LGIDicts use arc-seconds rather than degrees.
-    if (geographic && model.some(([x, y]) => Math.abs(x) > 180 || Math.abs(y) > 90)) {
-      model = model.map(([x, y]) => [x / 3600, y / 3600]);
-    }
-    const ll = model.map((p) => toWgs84(def, p));
-    if (finiteCorners(ll)) return { corners: ll, crs: label };
+    const arcSec = geographic && corners.map((p) => applyAffine(affine, p)).some(([x, y]) => Math.abs(x) > 180 || Math.abs(y) > 90);
+    const toLngLat: PageToLngLat = (p) => {
+      const [x, y] = applyAffine(affine, p);
+      return toWgs84(def, arcSec ? [x / 3600, y / 3600] : [x, y]);
+    };
+    const ll = corners.map(toLngLat);
+    if (finiteCorners(ll)) return { bbox: [box.x, box.y, box.x + box.width, box.y + box.height], toLngLat, corners: ll, crs: label };
   }
   return null;
 }
 
 // ---------------------------------------------------------------- entry
 
-export async function readGeoPdfGeoreference(buf: ArrayBuffer): Promise<GeoPdfInfo | null> {
+/** Everything needed to draw one georeferenced page and convert its drawings to lon/lat. */
+export interface GeoPdfFrame {
+  pageIndex: number;
+  /** Crop box in page user space. */
+  pageBox: Box;
+  rotation: number;
+  /** Map frame (viewport) box in page user space: x1, y1, x2, y2. The full page for LGIDict maps. */
+  bbox: [number, number, number, number];
+  toLngLat: PageToLngLat;
+  crs?: string;
+}
+
+export async function readGeoPdfFrames(buf: ArrayBuffer): Promise<{ doc: PDFDocument; frames: GeoPdfFrame[] }> {
   let doc: PDFDocument;
   try {
     doc = await PDFDocument.load(buf, { ignoreEncryption: true, updateMetadata: false, throwOnInvalidObject: false });
@@ -239,24 +266,32 @@ export async function readGeoPdfGeoreference(buf: ArrayBuffer): Promise<GeoPdfIn
   const ctx = doc.context;
   const pages = doc.getPages();
   const catalogLgi = toJs(ctx, doc.catalog.get(PDFName.of('LGIDict')));
-  const result: GeoPdfInfo = { pages: [] };
+  const frames: GeoPdfFrame[] = [];
 
   pages.forEach((page, pageIndex) => {
     const box = page.getCropBox();
-    const corners = pageCorners(box, page.getRotation().angle);
+    const rotation = page.getRotation().angle;
+    const corners = pageCorners(box, rotation);
     const node = page.node;
     let hit = fromViewports(toJs(ctx, node.get(PDFName.of('VP'))), corners);
     if (!hit) {
       const lgi = toJs(ctx, node.get(PDFName.of('LGIDict')));
-      if (lgi) hit = fromLgiDict(lgi, corners);
+      if (lgi) hit = fromLgiDict(lgi, corners, box);
     }
-    if (!hit && catalogLgi && (pageIndex === 0 || pages.length === 1)) hit = fromLgiDict(catalogLgi, corners);
-    if (hit) {
-      const entry: GeoPdfInfo['pages'][number] = { pageIndex, corners: hit.corners as [LngLat, LngLat, LngLat, LngLat] };
-      if (hit.crs) entry.crs = hit.crs;
-      result.pages.push(entry);
-    }
+    if (!hit && catalogLgi && (pageIndex === 0 || pages.length === 1)) hit = fromLgiDict(catalogLgi, corners, box);
+    if (hit) frames.push({ pageIndex, pageBox: box, rotation, bbox: hit.bbox, toLngLat: hit.toLngLat, crs: hit.crs });
   });
+  return { doc, frames };
+}
 
+export async function readGeoPdfGeoreference(buf: ArrayBuffer): Promise<GeoPdfInfo | null> {
+  const { frames } = await readGeoPdfFrames(buf);
+  const result: GeoPdfInfo = { pages: [] };
+  for (const f of frames) {
+    const corners = pageCorners(f.pageBox, f.rotation).map(f.toLngLat) as [LngLat, LngLat, LngLat, LngLat];
+    const entry: GeoPdfInfo['pages'][number] = { pageIndex: f.pageIndex, corners };
+    if (f.crs) entry.crs = f.crs;
+    result.pages.push(entry);
+  }
   return result.pages.length ? result : null;
 }

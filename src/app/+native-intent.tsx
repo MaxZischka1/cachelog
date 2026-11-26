@@ -5,7 +5,7 @@
 export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
   try {
     const bare = path.split('?')[0].split('#')[0];
-    if (path.startsWith('file:') || /\.cachelog$/i.test(bare)) {
+    if (path.startsWith('file:') || /\.(cachelog|pdf|tiff?|kml|geojson)$/i.test(bare)) {
       return `/open?uri=${encodeURIComponent(path)}`;
     }
     return path;

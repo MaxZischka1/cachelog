@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { errorMessage } from './store';
 
 export function showError(title: string, e: unknown) {
@@ -37,4 +37,20 @@ export async function attempt<T>(title: string, fn: () => Promise<T>): Promise<T
     showError(title, e);
     return undefined;
   }
+}
+
+/**
+ * A native menu that slides up from the bottom (iOS action sheet); an alert list elsewhere.
+ * Resolves undefined on cancel.
+ */
+export function chooseSheet<T extends string>(title: string, message: string | undefined, options: { label: string; value: T; destructive?: boolean }[]): Promise<T | undefined> {
+  if (Platform.OS !== 'ios') return choose(title, message, options);
+  return new Promise((resolve) => {
+    const labels = [...options.map((o) => o.label), 'Cancel'];
+    const destructive = options.map((o, i) => (o.destructive ? i : -1)).filter((i) => i >= 0);
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title, message, options: labels, cancelButtonIndex: labels.length - 1, destructiveButtonIndex: destructive.length ? destructive : undefined, userInterfaceStyle: 'dark' },
+      (i) => resolve(i < options.length ? options[i].value : undefined),
+    );
+  });
 }

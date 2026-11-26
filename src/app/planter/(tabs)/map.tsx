@@ -1,15 +1,15 @@
-import { Stack } from 'expo-router';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { bearingDeg, centroid, compass, distanceM, pointInPolygon } from '../../core/plan';
-import type { ID } from '../../core/types';
-import { BlockMap, useUserLocation } from '../../map';
-import { fmtDistance, fmtInt } from '../../ui/format';
-import { usePlanterData } from '../../ui/hooks/usePlanter';
-import { usePins } from '../../ui/pins';
-import { Screen } from '../../ui/Screen';
-import { EmptyState } from '../../ui/Section';
-import { colors, font, radius, spacing } from '../../ui/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { bearingDeg, centroid, compass, distanceM, pointInPolygon } from '../../../core/plan';
+import type { ID } from '../../../core/types';
+import { BlockMap, useUserLocation } from '../../../map';
+import { fmtDistance, fmtInt } from '../../../ui/format';
+import { usePlanterData } from '../../../ui/hooks/usePlanter';
+import { usePins } from '../../../ui/pins';
+import { EmptyState } from '../../../ui/Section';
+import { TopBar } from '../../../ui/planter/TopBar';
+import { colors, font, radii, spacing } from '../../../ui/theme';
 
 /** Offline map with my piece and cache highlighted, caches labelled with counts, and where I am. */
 export default function PlanterMap() {
@@ -17,6 +17,7 @@ export default function PlanterMap() {
   // BlockMap runs its own watch for the blue dot; this second one gives us numbers for the distance card.
   const loc = useUserLocation();
   const pins = usePins(d.blockId);
+  const insets = useSafeAreaInsets();
 
   const highlightIds = useMemo(() => [d.piece?.id, d.cache?.id].filter((x): x is ID => !!x), [d.piece, d.cache]);
   const cacheLabels = useMemo(() => {
@@ -27,9 +28,10 @@ export default function PlanterMap() {
 
   if (!d.block || !d.plan) {
     return (
-      <Screen>
-        <EmptyState title="No plan on this phone" message="Import a plan from the home screen." />
-      </Screen>
+      <View style={[styles.flex, styles.bg]}>
+        <TopBar title="Map" />
+        <EmptyState title="No plan on this phone" message="Import a plan from the Bag-up tab." />
+      </View>
     );
   }
 
@@ -45,9 +47,9 @@ export default function PlanterMap() {
 
   return (
     <View style={styles.flex}>
-      <Stack.Screen options={{ title: d.piece ? `Map · ${d.piece.name}` : 'Map' }} />
       <BlockMap block={d.block} plan={d.plan} highlightIds={highlightIds} cacheLabels={cacheLabels} pins={pins.mapPins} showUserLocation style={styles.flex} />
-      <View style={styles.card} pointerEvents="none">
+      <View style={[styles.card, { top: insets.top + spacing.sm }]} pointerEvents="none">
+        <Text style={styles.cardTitle}>{d.piece ? d.piece.name : d.block.name}</Text>
         {lines.map((l, i) => (
           <Text key={i} style={styles.line}>
             {l}
@@ -66,15 +68,19 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   card: {
     position: 'absolute',
-    left: spacing.sm,
-    right: 80,
-    bottom: spacing.xl,
-    backgroundColor: colors.bg,
-    borderRadius: radius,
-    borderWidth: 2,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.xs,
+    left: spacing.lg,
+    right: 72,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
   },
-  line: { fontSize: font.large, fontWeight: '800', color: colors.text },
+  bg: { backgroundColor: colors.bg },
+  cardTitle: { fontSize: font.small, fontWeight: '600', color: colors.textMuted },
+  line: { fontSize: font.large, fontWeight: '700', color: colors.text },
 });

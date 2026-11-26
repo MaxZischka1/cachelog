@@ -122,6 +122,7 @@ export function PieceSheet({ value, isNew, onSave, onDelete, onClose, speciesOpt
 }
 
 const HAZARD_PRESETS = ['Wasp nest', 'Cliff', 'Bear sign', 'Washout', 'Steep slope', 'Deep slash'];
+const HAZARD_AREA_PRESETS = ['No plant', 'Wet ground', 'Riparian buffer', 'Steep slope', 'Wasps', 'Heavy slash', 'Cliff band', 'Washout'];
 
 export function HazardSheet({ value, isNew, onSave, onDelete, onClose }: SheetBase<Hazard>) {
   const [note, setNote] = useState('');
@@ -131,7 +132,7 @@ export function HazardSheet({ value, isNew, onSave, onDelete, onClose }: SheetBa
   return (
     <Sheet
       visible={!!value}
-      title={isNew ? (value?.kind === 'area' ? 'New hazard area' : 'New hazard') : 'Edit hazard'}
+      title={isNew ? (value?.kind === 'area' ? 'Label this hazard zone' : 'New hazard') : 'Edit hazard'}
       onClose={onClose}
       actions={
         <>
@@ -141,7 +142,7 @@ export function HazardSheet({ value, isNew, onSave, onDelete, onClose }: SheetBa
       }
     >
       <View style={styles.chips}>
-        {HAZARD_PRESETS.map((p) => (
+        {(value?.kind === 'area' ? HAZARD_AREA_PRESETS : HAZARD_PRESETS).map((p) => (
           <Chip key={p} label={p} selected={note === p} onPress={() => setNote(p)} />
         ))}
       </View>

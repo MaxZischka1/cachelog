@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { newId, polygonAreaHa } from '../../core/plan';
+import { centroid, newId, polygonAreaHa } from '../../core/plan';
 import type { Block, Cache, Hazard, ID, LngLat, PlanContent, Piece } from '../../core/types';
 import { BlockMap, type MapMode } from '../../map';
-import { choose, confirm, showError } from '../alerts';
+import { chooseSheet, confirm, showError } from '../alerts';
 import { Button } from '../Button';
 import { fmtCountsInline, fmtHa, speciesFromBlock } from '../format';
 import { nextName, removeCache, removeHazard, removePiece, upsertCache, upsertHazard, upsertPiece } from '../planEdits';
@@ -18,13 +18,15 @@ type Tool =
   | { kind: 'draw-piece'; redrawId?: ID }
   | { kind: 'add-hazard-point' }
   | { kind: 'draw-hazard-area' }
+  | { kind: 'lasso' }
   | { kind: 'move'; type: 'cache' | 'hazard'; id: ID };
 
 type Selection = { type: 'cache' | 'piece' | 'hazard'; id: ID } | null;
 
 type SheetState =
   | { type: 'cache'; value: Cache; isNew: boolean }
-  | { type: 'piece'; value: Piece; isNew: boolean }
+  /** withCache: a cache area, so the piece gets its own cache in the middle when saved. */
+  | { type: 'piece'; value: Piece; isNew: boolean; withCache?: boolean }
   | { type: 'hazard'; value: Hazard; isNew: boolean }
   | null;
 
@@ -106,6 +108,15 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
             setSheet({ type: 'hazard', isNew: true, value: { id: newId(), kind: 'area', geometry: ring, note: '' } });
           },
         };
+      case 'lasso':
+        return {
+          kind: 'draw-freehand',
+          onCancel: toView,
+          onDone: (ring: LngLat[]) => {
+            toView();
+            void labelArea(ring);
+          },
+        };
       case 'move': {
         const { type, id } = tool;
         return {
@@ -134,16 +145,34 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
     'add-hazard-point': 'Tap the map where the hazard is.',
     'draw-piece': 'Tap the corners of the piece, then Done on the map.',
     'draw-hazard-area': 'Tap the corners of the hazard area, then Done on the map.',
+    lasso: 'Drag a finger around the area.',
     move: 'Tap the new spot on the map.',
   };
 
-  const addHazard = async () => {
-    const kind = await choose('Add hazard', 'A single spot or an area?', [
-      { label: 'Spot (wasp nest, bear sign)', value: 'point' },
-      { label: 'Area (cliff band, washout)', value: 'area' },
+  /** After a lasso: what is this area? */
+  const labelArea = async (ring: LngLat[]) => {
+    const ha = fmtHa(polygonAreaHa(ring));
+    const what = await chooseSheet(`What is this area? (${ha})`, undefined, [
+      { label: 'Cache area: piece with its own cache', value: 'cache-area' },
+      { label: 'Piece', value: 'piece' },
+      { label: 'Hazard zone', value: 'hazard', destructive: true },
     ]);
-    if (kind === 'point') setTool({ kind: 'add-hazard-point' });
-    if (kind === 'area') setTool({ kind: 'draw-hazard-area' });
+    if (what === 'hazard') {
+      setSheet({ type: 'hazard', isNew: true, value: { id: newId(), kind: 'area', geometry: ring, note: '' } });
+    } else if (what === 'piece' || what === 'cache-area') {
+      setSheet({ type: 'piece', isNew: true, withCache: what === 'cache-area', value: { id: newId(), name: nextName('Piece', content.pieces), polygon: ring } });
+    }
+  };
+
+  const more = async () => {
+    const pick = await chooseSheet('Add', undefined, [
+      { label: 'Piece (tap corners)', value: 'piece' },
+      { label: 'Hazard spot', value: 'hazard-point' },
+      { label: 'Hazard area (tap corners)', value: 'hazard-area' },
+    ]);
+    if (pick === 'piece') setTool({ kind: 'draw-piece' });
+    if (pick === 'hazard-point') setTool({ kind: 'add-hazard-point' });
+    if (pick === 'hazard-area') setTool({ kind: 'draw-hazard-area' });
   };
 
   const openSelected = () => {
@@ -189,9 +218,9 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
         {banner ? <Text style={styles.banner}>{banner}</Text> : null}
         {tool.kind === 'view' ? (
           <View style={styles.toolbar}>
-            <Button style={styles.tool} title="+ Cache" onPress={() => setTool({ kind: 'add-cache' })} />
-            <Button style={styles.tool} title="+ Piece" onPress={() => setTool({ kind: 'draw-piece' })} />
-            <Button style={styles.tool} title="+ Hazard" onPress={addHazard} />
+            <Button style={styles.toolMain} title="Draw area" onPress={() => setTool({ kind: 'lasso' })} accessibilityLabel="Draw an area by dragging: cache area, piece or hazard zone" />
+            <Button style={styles.tool} variant="secondary" title="+ Cache" onPress={() => setTool({ kind: 'add-cache' })} />
+            <Button style={styles.tool} variant="secondary" title="More" onPress={more} />
           </View>
         ) : null}
       </View>
@@ -220,7 +249,7 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
           </View>
         ) : tool.kind === 'view' ? (
           footer
-        ) : tool.kind === 'draw-piece' || tool.kind === 'draw-hazard-area' ? null : (
+        ) : tool.kind === 'draw-piece' || tool.kind === 'draw-hazard-area' || tool.kind === 'lasso' ? null : (
           // The map shows its own hint at the top and Cancel/Done only for drawing; give place/move a way out.
           <View style={styles.modeBar}>
             <Text style={styles.modeText}>{instructions[tool.kind]}</Text>
@@ -246,8 +275,11 @@ export function PlanMapEditor({ block, content, onEdit, footer, banner, highligh
         speciesOptions={speciesOptions}
         onClose={() => setSheet(null)}
         onSave={(p) => {
+          const withCache = sheet?.type === 'piece' && sheet.withCache;
           setSheet(null);
-          void run(upsertPiece(p));
+          if (!withCache) return void run(upsertPiece(p));
+          const cache: Cache = { id: newId(), name: nextName('Cache', content.caches), position: centroid(p.polygon), trees: [] };
+          void run((c) => upsertCache(cache)(upsertPiece(p)(c)));
         }}
         onDelete={() => sheet?.type === 'piece' && deleteFeature({ type: 'piece', id: sheet.value.id }, sheet.value.name)}
       />
@@ -297,6 +329,7 @@ const styles = StyleSheet.create({
   },
   toolbar: { flexDirection: 'row', gap: spacing.sm },
   tool: { flex: 1, paddingHorizontal: spacing.xs },
+  toolMain: { flex: 1.4, paddingHorizontal: spacing.xs },
   modeBar: {
     flexDirection: 'row',
     alignItems: 'center',
